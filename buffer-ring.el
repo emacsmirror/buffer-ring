@@ -107,8 +107,7 @@
       (progn
         (message "Creating a new ring \"%s\"" name)
         (let
-          ((new-ring (dyn-ring-make-element (make-bfr-ring name))))
-
+          ((new-ring (make-bfr-ring name)))
           (dyn-ring-insert buffer-ring-torus new-ring)
           (bfr-ring-ring new-ring))) ) ))
 
@@ -204,7 +203,7 @@
 
       (set (make-local-variable 'buffer-ring-element)
         (dyn-ring-insert buffer-ring
-          (dyn-ring-make-element (bfr-get-buffer-id (current-buffer)))) ) )
+          (bfr-get-buffer-id (current-buffer))) ) )
     t))
 
 (defun bfr-in-ring-p ( &optional buffer )
