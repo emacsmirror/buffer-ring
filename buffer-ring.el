@@ -273,6 +273,9 @@
 
       (kill-local-variable 'buffer-ring)
       (kill-local-variable 'buffer-ring-element)
+      (kill-local-variable 'buffer-ring-id)
+      (kill-local-variable 'buffer-ring-name)
+      (kill-local-variable 'buffer-ring-modeline)
 
       (remove-hook 'kill-buffer-hook 'buffer-ring-delete t))
     (message "This buffer is not in a ring")))
