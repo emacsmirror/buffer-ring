@@ -421,8 +421,8 @@
         (with-current-buffer buffer-name
           (buffer-ring-delete)))
 
-      (dyn-ring-map (bfr-current-ring) (lambda ( buffer-name )
-                                         buffer-name)) )
+      (dyn-ring-map (bfr-current-ring)
+                    #'bfr-find-buffer-for-id))
     (dyn-ring-delete buffer-ring-torus (car buffer-ring-torus)) ))
 
 (provide 'buffer-ring)
