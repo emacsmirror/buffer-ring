@@ -59,10 +59,10 @@
 ;;
 
 (defun bfr-ring-name ( buffer-ring )
-  (car (dyn-ring-element-value buffer-ring)))
+  (car buffer-ring))
 
 (defun bfr-ring-ring ( buffer-ring )
-  (cdr (dyn-ring-element-value buffer-ring)))
+  (cdr buffer-ring))
 
 (defun make-bfr-ring ( name )
   (cons name (make-dyn-ring)))
