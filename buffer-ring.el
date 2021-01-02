@@ -80,12 +80,10 @@
   (lexical-let*
     ((search-name name)
      (found (dyn-ring-find buffer-ring-torus
-              (lambda ( found-name )
-                (if (string= search-name (car (dyn-ring-element-value found-name)))
-                  t
-                  nil))) ))
+                           (lambda ( ring )
+                             (string= search-name (bfr-ring-name ring)))) ))
     (when found
-      (bfr-ring-ring (car found))) ))
+      (bfr-ring-ring (bfr-ring-name found))) ))
 
 (defun bfr-torus-get-ring ( name )
   "bfr-torus-get-ring NAME
@@ -152,11 +150,10 @@
   "
   (let
     ((found (dyn-ring-find buffer-ring
-              (lambda ( ring-element )
-                (when (string-equal (dyn-ring-element-value ring-element) id) t)) )))
-    (if found
-      (car found)
-      nil) ))
+              (lambda ( buffer-id )
+                (string= buffer-id id)) )))
+    (when found
+      (bfr-find-buffer-for-id found)) ))
 
 (defun bfr-ring-find-unused-id ( ring )
   (let
@@ -404,7 +401,7 @@
           (if ring-list
             (concat name "," ring-list)
             name)))
-      (dyn-ring-map buffer-ring-torus 'car))
+      (dyn-ring-map buffer-ring-torus 'bfr-ring-name))
 
     (message "buffer rings: %s" ring-list) ))
 
