@@ -288,7 +288,7 @@
     (let
       ((buffer-list-string nil))
 
-      (dyn-ring-map buffer-ring
+      (dyn-ring-traverse-collect buffer-ring
         (lambda ( bfr-in-ring-p )
           (setq discovered-buffer (bfr-find-buffer-for-id bfr-id))
           (if buffer-list-string
@@ -401,7 +401,7 @@
           (if ring-list
             (concat name "," ring-list)
             name)))
-      (dyn-ring-map buffer-ring-torus 'bfr-ring-name))
+      (dyn-ring-traverse-collect buffer-ring-torus 'bfr-ring-name))
 
     (message "buffer rings: %s" ring-list) ))
 
@@ -418,8 +418,8 @@
         (with-current-buffer buffer-name
           (buffer-ring-delete)))
 
-      (dyn-ring-map (bfr-current-ring)
-                    #'bfr-find-buffer-for-id))
+      (dyn-ring-traverse-collect (bfr-current-ring)
+                                 #'bfr-find-buffer-for-id))
     (dyn-ring-delete buffer-ring-torus (car buffer-ring-torus)) ))
 
 (provide 'buffer-ring)
