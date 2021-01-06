@@ -5,6 +5,7 @@
 ;; Maintainer: Mike Mattie codermattie@gmail.com
 ;; Created: 2009-4-16
 ;; Version: 0.1.0
+;; Package-Requires: ((dynamic-ring "0.0.2"))
 
 ;; This file is NOT a part of Gnu Emacs.
 
