@@ -1,4 +1,4 @@
-;;; buffer-ring.el --- A torus for buffer navigation. A ring of buffers, and a ring of buffer rings.
+;;; buffer-ring.el --- A torus for buffer navigation. A ring of buffers, and a ring of buffer rings. -*- lexical-binding: t -*-
 
 ;; Copyright (C) 2009 Mike Mattie
 ;; Author: Mike Mattie codermattie@gmail.com
