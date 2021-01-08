@@ -5,7 +5,7 @@
 ;; Maintainer: Mike Mattie codermattie@gmail.com
 ;; Created: 2009-4-16
 ;; Version: 0.1.0
-;; Package-Requires: ((dynamic-ring "0.0.2"))
+;; Package-Requires: ((dynamic-ring "0.0.2") (s "1.12.0"))
 
 ;; This file is NOT a part of Gnu Emacs.
 
@@ -30,6 +30,7 @@
 
 (defconst buffer-ring-version "0.1.1" "buffer-ring version")
 (require 'dynamic-ring)
+(require 's)
 
 ;;
 ;; default keymap
@@ -55,25 +56,17 @@
   "The default buffer ring")
 
 ;;
-;;  buffer rings registry
+;;  buffer ring structure
 ;;
 
-;; a hash mapping names of buffer rings to the ring structures
-(defvar buffer-rings
-  (ht))
+(defun bfr-ring-name (buffer-ring)
+  (car buffer-ring))
 
-;; this being "flat" means that ring names are global rather than
-;; torus-specific.
-;; we could just prefix a coordinate in the insertion function
-;; so don't worry about this for now
+(defun bfr-ring-ring (buffer-ring)
+  (cdr buffer-ring))
 
-(defun bfr-register-ring (name ring)
-  "Register a newly created buffer RING under NAME."
-  (ht-set! buffer-rings name ring))
-
-(defun bfr-lookup-ring (name)
-  "Lookup a ring by NAME."
-  (ht-get buffer-rings name))
+(defun make-bfr-ring (name)
+  (cons name (make-dyn-ring)))
 
 ;;
 ;;  buffer torus functions.
@@ -81,9 +74,8 @@
 
 (defun bfr-torus--create-ring (name)
   "Create ring with name NAME."
-  (let ((ring (make-dyn-ring)))
+  (let ((ring (make-bfr-ring name)))
     (dyn-ring-insert buffer-ring-torus ring)
-    (bfr-register-ring name ring)
     ring))
 
 (defun bfr-torus-get-ring (name)
@@ -92,23 +84,30 @@
    Find a existing buffer ring, or create a new buffer ring with name.
    buffer-ring-default is updated. The buffer-ring is returned.
   "
-  (let ((ring (dyn-ring-find-forwards
-               (bfr-lookup-ring name))))
-    (if ring
+  (let ((segment (dyn-ring-find-forwards buffer-ring-torus
+                                         (lambda (r)
+                                           (string= name
+                                                    (bfr-ring-name r))))))
+    (if segment
         (progn
           (message "Adding to existing ring: %s" name)
-          ring)
+          (dyn-ring-segment-value segment))
       (message "Creating a new ring \"%s\"" name)
       (bfr-torus--create-ring name))))
 
 (defun bfr-torus-switch-to-ring (name)
   "Switch to ring NAME."
   (interactive)
-  (let ((ring (bfr-lookup-ring name)))
-    (when ring
-      (dyn-ring-break-insert buffer-ring-torus ring)
-      (switch-to-buffer
-       (dyn-ring-value ring)))))
+  (let ((segment (dyn-ring-find-forwards buffer-ring-torus
+                                         (lambda (r)
+                                           (string= name
+                                                    (bfr-ring-name r))))))
+    (when segment
+      (let ((ring (dyn-ring-segment-value segment)))
+        (dyn-ring-break-insert buffer-ring-torus
+                               ring)
+        (switch-to-buffer
+         (dyn-ring-value ring))))))
 
 ;;
 ;; buffer ring functions
@@ -127,7 +126,7 @@
   ;; active buffer ring, and any buffer-ring operations
   ;; would assume the current buffer doesn't even exist
   ;; or rather, would assume that we are currently at head
-  (dyn-ring-break-insert (bfr-current-ring)
+  (dyn-ring-break-insert (bfr-ring-ring (bfr-current-ring))
                          (current-buffer)))
 
 (defun bfr-ring-size ()
@@ -137,7 +136,7 @@
    If there is no active buffer ring, it returns -1 so that
    you can always use a numeric operator.
   "
-  (let ((ring (bfr-current-ring)))
+  (let ((ring (bfr-ring-ring (bfr-current-ring))))
     (if ring
         (dyn-ring-size ring)
       -1)))
@@ -153,7 +152,7 @@
    to add the buffer to.
   "
   (interactive "sAdd to ring ? ")
-  (let ((ring (bfr-torus-get-ring ring-name))
+  (let ((ring (bfr-ring-ring (bfr-torus-get-ring ring-name)))
         (buffer (current-buffer)))
     (cond ((dyn-ring-contains-p ring buffer)
            (message "buffer %s is already in ring \"%s\"" (buffer-name)
@@ -171,7 +170,7 @@
    This modifies the ring, it does not kill the buffer.
   "
   (interactive)
-  (let ((ring (bfr-current-ring))
+  (let ((ring (bfr-ring-ring (bfr-current-ring)))
         (buffer (current-buffer)))
     (if (dyn-ring-delete ring buffer)
         ;; TODO: if called as part of kill buffer, this needs
@@ -187,21 +186,22 @@
    List the buffers in the current buffer ring.
   "
   (interactive)
-  (let ((ring (bfr-current-ring)))
-    (if ring
+  (let* ((bfr-ring (bfr-current-ring))
+         (ring (bfr-ring-ring bfr-ring)))
+    (if bfr-ring
         (let ((result (dyn-ring-traverse-collect ring #'buffer-name)))
           (if result
-              (message "buffers in [%s]: %s" "TODO:ring-name" result)
+              (message "buffers in [%s]: %s" (bfr-ring-name bfr-ring) result)
             (message "Buffer ring is empty.")))
       (message "No active buffer ring."))) )
 
 ;; TODO: standardize interface names
 (defun bfr-ring--rotate (direction)
-  (let ((ring (bfr-current-ring)))
+  (let ((ring (bfr-ring-ring (bfr-current-ring))))
     (if (< (dyn-ring-size ring) 2)
         (message "There is only one buffer in the ring.")
       (progn
-        (funcall direction buffer-ring)
+        (funcall direction ring)
         (switch-to-buffer (dyn-ring-value ring))))))
 
 (defun buffer-ring-prev-buffer ()
@@ -224,8 +224,8 @@
 ;; buffer torus interface
 ;;
 
-(defun bfr-current-name ()
-  (car (dyn-ring-value buffer-ring-torus)))
+(defun bfr-current-ring-name ()
+  (bfr-ring-name (dyn-ring-value buffer-ring-torus)))
 
 ;; TODO: decide on reference ordering, i.e. how do we get the current ring?
 ;; is it by consulting the torus? Or is it the other way around, that the
@@ -246,7 +246,7 @@
                                (lambda (ring)
                                  (not (dyn-ring-empty-p ring))))
       (progn
-        (message "switching to ring %s" "TODO:ring-name")
+        (message "switching to ring %s" (bfr-current-ring-name))
         (switch-to-buffer
          (dyn-ring-value (bfr-current-ring))))
       (message "All of the buffer rings are empty. Keeping the current ring position")) ))
@@ -267,26 +267,15 @@
   (interactive)
   (bfr-rotate-buffer-torus 'dyn-ring-rotate-left))
 
-;; TODO: continue from here
 (defun buffer-torus-list-rings ()
   "buffer-torus-list-rings.
 
    List the buffer rings in the buffer torus.
   "
   (interactive)
-
-  (let
-    ((ring-list nil))
-
-    (mapc
-      (lambda ( name )
-        (setq ring-list
-          (if ring-list
-            (concat name "," ring-list)
-            name)))
-      (dyn-ring-traverse-collect buffer-ring-torus 'bfr-ring-name))
-
-    (message "buffer rings: %s" ring-list) ))
+  (message "buffer rings: %s"
+           (s-join ", " (dyn-ring-traverse-collect buffer-ring-torus
+                                                   #'bfr-ring-name))))
 
 (defun buffer-torus-delete-ring ()
   "buffer-torus-delete-ring
@@ -294,16 +283,14 @@
    Delete the entire current buffer-ring.
   "
   (interactive)
-
-  (save-excursion
-    (mapc
-      (lambda ( buffer-name )
-        (with-current-buffer buffer-name
-          (buffer-ring-delete)))
-
-      (dyn-ring-traverse-collect (bfr-current-ring)
-                                 #'bfr-find-buffer-for-id))
-    (dyn-ring-delete buffer-ring-torus (car buffer-ring-torus)) ))
+  (let ((bfr-ring (bfr-current-ring)))
+    (save-excursion
+      (mapc
+       (lambda (buffer)
+         (with-current-buffer buffer
+           (buffer-ring-delete)))
+       (dyn-ring-values (bfr-ring-ring bfr-ring)))
+      (dyn-ring-delete buffer-ring-torus bfr-ring) )))
 
 (provide 'buffer-ring)
 ;;; buffer-ring.el ends here
