@@ -70,6 +70,27 @@
   (cons name (make-dyn-ring)))
 
 ;;
+;; buffer->rings registry
+;;
+;; TODO: consider buffer local variables
+(defvar buffer-rings
+  (ht)
+  "Buffer to rings hash.")
+
+(defun bfr-lookup-rings (&optional buffer)
+  "Lookup rings that BUFFER is part of."
+  (let ((buffer (or buffer (current-buffer))))
+    (ht-get buffer-rings (buffer-name buffer))))
+
+(defun bfr-register-ring (buffer ring)
+  "Register that BUFFER has been added to RING."
+  (let* ((key (buffer-name buffer))
+         (rings (ht-get buffer-rings key)))
+    (ht-set! buffer-rings
+             key
+             (cons bring rings))))
+
+;;
 ;;  buffer torus functions.
 ;;
 
@@ -118,7 +139,6 @@
   "If a buffer is visited directly without rotating
    to it, it should modify the ring structure so that
    recency is accounted for correctly."
-  ;; TODO: add this to the buffer visited hook
   ;; if ∈ current ring, break-and-insert
   ;; elif ∈ some ring R, switch to one of them
   ;;   this should itself be a ring of rings, but just
@@ -127,8 +147,15 @@
   ;; active buffer ring, and any buffer-ring operations
   ;; would assume the current buffer doesn't even exist
   ;; or rather, would assume that we are currently at head
-  (dyn-ring-break-insert (bfr-ring-ring (bfr-current-ring))
-                         (current-buffer)))
+  (let* ((buffer (current-buffer))
+         (bfr-rings (bfr-lookup-rings buffer)))
+    (cond ((dyn-ring-contains-p (bfr-current-ring)
+                                buffer)
+           (dyn-ring-break-insert (bfr-ring-ring (bfr-current-ring))
+                                  (current-buffer)))
+          (bfr-rings
+           (bfr-torus-switch-to-ring
+            (bfr-ring-name (car bfr-rings)))))))
 
 (defun bfr-ring-size ()
   "bfr-ring-size
@@ -146,6 +173,16 @@
 ;; buffer ring interface
 ;;
 
+(defun buffer-ring-initialize ()
+  "Set up any hooks needed for buffer rings."
+  (interactive)
+  (advice-add 'switch-to-buffer
+              :around #'buffer-ring-jump-to-buffer)
+  ;; TODO: if we want to add all buffers to a "primary"
+  ;; ring, we should also hook into buffer-list-changed-hook
+  ;; or maybe find-file-hook in addition here
+  )
+
 (defun buffer-ring-add (ring-name)
   "buffer-ring-add RING-NAME
 
@@ -160,7 +197,7 @@
                     ring-name)
            nil)
           (t (dyn-ring-insert ring buffer)
-             ;; revisit - looks buffer-local, but is it?
+             (bfr-register-ring buffer ring)
              (add-hook 'kill-buffer-hook 'buffer-ring-drop-buffer t t)
              t))))
 
