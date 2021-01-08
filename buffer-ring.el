@@ -41,6 +41,7 @@
 
 (global-set-key (kbd "C-c C-b a") 'buffer-ring-add)
 (global-set-key (kbd "C-c C-b d") 'buffer-ring-delete)
+(global-set-key (kbd "C-c C-b c") 'buffer-ring-drop-buffer)
 
 (global-set-key (kbd "C-c C-b f") 'buffer-ring-next-buffer)
 (global-set-key (kbd "C-c C-b b") 'buffer-ring-prev-buffer)
@@ -160,8 +161,13 @@
            nil)
           (t (dyn-ring-insert ring buffer)
              ;; revisit - looks buffer-local, but is it?
-             (add-hook 'kill-buffer-hook 'buffer-ring-delete t t)
+             (add-hook 'kill-buffer-hook 'buffer-ring-drop-buffer t t)
              t))))
+
+(defun buffer-ring-drop-buffer ()
+  "Drop buffer from all rings."
+  (interactive)
+  (remove-hook 'kill-buffer-hook 'buffer-ring-drop-buffer t))
 
 (defun buffer-ring-delete ()
   "buffer-ring-delete
@@ -173,11 +179,7 @@
   (let ((ring (bfr-ring-ring (bfr-current-ring)))
         (buffer (current-buffer)))
     (if (dyn-ring-delete ring buffer)
-        ;; TODO: if called as part of kill buffer, this needs
-        ;; to delete the buffer from all rings - so that should
-        ;; actually be a separate function, buffer-ring-drop-buffer
-        ;; and we don't need to unhook it here
-        (remove-hook 'kill-buffer-hook 'buffer-ring-delete t)
+        (message "Deleted buffer from ring %s" (bfr-current-ring-name))
       (message "This buffer is not in the current ring"))))
 
 (defun buffer-ring-list-buffers ()
@@ -227,13 +229,6 @@
 (defun bfr-current-ring-name ()
   (bfr-ring-name (dyn-ring-value buffer-ring-torus)))
 
-;; TODO: decide on reference ordering, i.e. how do we get the current ring?
-;; is it by consulting the torus? Or is it the other way around, that the
-;; torus is found by starting at the current ring and going outward?
-;; If we are going to assume a single torus, we can leave it as is for now
-;; otherwise, we must address the possibility of more than one torus
-;; containing the current ring
-;; -> just consult "the" torus for now
 (defun bfr-current-ring ()
   (dyn-ring-value buffer-ring-torus))
 
@@ -283,14 +278,7 @@
    Delete the entire current buffer-ring.
   "
   (interactive)
-  (let ((bfr-ring (bfr-current-ring)))
-    (save-excursion
-      (mapc
-       (lambda (buffer)
-         (with-current-buffer buffer
-           (buffer-ring-delete)))
-       (dyn-ring-values (bfr-ring-ring bfr-ring)))
-      (dyn-ring-delete buffer-ring-torus bfr-ring) )))
+  (dyn-ring-delete buffer-ring-torus (bfr-current-ring)))
 
 (provide 'buffer-ring)
 ;;; buffer-ring.el ends here
