@@ -117,16 +117,17 @@
         (dyn-ring-size ring)
       -1)))
 
-(defun buffer-ring-add (ring-name)
-  "buffer-ring-add RING-NAME
+(defun buffer-ring-add (ring-name &optional buffer)
+  "buffer-ring-add RING-NAME BUFFER
 
-   Add the current buffer to a ring. It will prompt for the ring
-   to add the buffer to.
+   Add the buffer to a ring. It will prompt for the ring
+   to add the buffer to, and assumes the current buffer
+   if none is provided.
   "
   (interactive "sAdd to ring ? ")
   (let* ((bfr-ring (bfr-torus-get-ring ring-name))
          (ring (bfr-ring-ring bfr-ring))
-         (buffer (current-buffer)))
+         (buffer (or buffer (current-buffer))))
     (cond ((dyn-ring-contains-p ring buffer)
            (message "buffer %s is already in ring \"%s\"" (buffer-name)
                     ring-name)

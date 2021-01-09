@@ -14,7 +14,6 @@
 ;;
 
 (require 'buffer-ring)
-(require 'cl)
 
 ;;
 ;; Fixtures
@@ -140,24 +139,23 @@
   (fixture-0
    (lambda ()
      (let ((buffer (generate-new-buffer bfr-test-name-prefix)))
-       (with-current-buffer buffer
-         (buffer-ring-add "new-ring")
-         (should (dyn-ring-contains-p buffer-ring-torus
-                                      (car (bfr-get-rings))))
-         (should (dyn-ring-contains-p (bfr-ring-ring (bfr-current-ring))
-                                      (current-buffer)))
-         (should (= 1 (bfr-ring-size)))))))
+       (buffer-ring-add "new-ring" buffer)
+       (should (dyn-ring-contains-p buffer-ring-torus
+                                    (car (bfr-get-rings buffer))))
+       (should (dyn-ring-contains-p (bfr-ring-ring (bfr-current-ring))
+                                    buffer))
+       (should (= 1 (bfr-ring-size))))))
 
   (fixture-1
    (lambda ()
      (let ((buffer (generate-new-buffer bfr-test-name-prefix)))
-       (with-current-buffer buffer
-         (buffer-ring-add (bfr-ring-name bring))
-         (should (dyn-ring-contains-p buffer-ring-torus
-                                      (car (bfr-get-rings))))
-         (should (dyn-ring-contains-p (bfr-ring-ring (bfr-current-ring))
-                                      (current-buffer)))
-         (should (= 1 (bfr-ring-size)))))))
+       (buffer-ring-add (bfr-ring-name bring)
+                        buffer)
+       (should (dyn-ring-contains-p buffer-ring-torus
+                                    (car (bfr-get-rings buffer))))
+       (should (dyn-ring-contains-p (bfr-ring-ring (bfr-current-ring))
+                                    buffer))
+       (should (= 1 (bfr-ring-size))))))
 
   (fixture-2-1-1
    (lambda ()
