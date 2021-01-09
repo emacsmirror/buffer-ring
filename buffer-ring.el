@@ -87,8 +87,8 @@
   (ht)
   "Buffer to rings hash.")
 
-(defun bfr-lookup-rings (&optional buffer)
-  "Lookup rings that BUFFER is part of."
+(defun bfr-get-rings (&optional buffer)
+  "All rings that BUFFER is part of."
   (let ((buffer (or buffer (current-buffer))))
     (ht-get buffer-rings (buffer-name buffer))))
 
@@ -98,7 +98,7 @@
          (rings (ht-get buffer-rings key)))
     (ht-set! buffer-rings
              key
-             (cons (bfr-ring-name bfr-ring)
+             (cons bfr-ring
                    rings))))
 
 ;;
@@ -124,14 +124,15 @@
    to add the buffer to.
   "
   (interactive "sAdd to ring ? ")
-  (let ((ring (bfr-ring-ring (bfr-torus-get-ring ring-name)))
-        (buffer (current-buffer)))
+  (let* ((bfr-ring (bfr-torus-get-ring ring-name))
+         (ring (bfr-ring-ring bfr-ring))
+         (buffer (current-buffer)))
     (cond ((dyn-ring-contains-p ring buffer)
            (message "buffer %s is already in ring \"%s\"" (buffer-name)
                     ring-name)
            nil)
           (t (dyn-ring-insert ring buffer)
-             (bfr-register-ring buffer ring)
+             (bfr-register-ring buffer bfr-ring)
              (add-hook 'kill-buffer-hook 'buffer-ring-drop-buffer t t)
              t))))
 
@@ -206,14 +207,14 @@
   ;; would assume the current buffer doesn't even exist
   ;; or rather, would assume that we are currently at head
   (let* ((buffer (current-buffer))
-         (bfr-rings (bfr-lookup-rings buffer)))
+         (bfr-rings (bfr-get-rings buffer)))
     (cond ((dyn-ring-contains-p (bfr-current-ring)
                                 buffer)
            (dyn-ring-break-insert (bfr-ring-ring (bfr-current-ring))
                                   (current-buffer)))
           (bfr-rings
            (bfr-torus-switch-to-ring
-            (car bfr-rings))))))
+            (bfr-ring-name (car bfr-rings)))))))
 
 ;;
 ;; buffer torus interface
