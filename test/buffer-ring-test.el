@@ -126,12 +126,69 @@
 
 (ert-deftest bfr-ring-test ()
   ;; null constructor
-  (should (make-bfr-ring bfr-test-ring-name))
+  (should (make-bfr-ring bfr-0-ring-name))
 
   ;; bfr-ring-name
-  (let ((ring (make-bfr-ring bfr-test-ring-name)))
-    (should (equal bfr-test-ring-name (bfr-ring-name ring))))
+  (let ((bfr-ring (make-bfr-ring bfr-0-ring-name)))
+    (should (equal bfr-0-ring-name (bfr-ring-name bfr-ring))))
 
   ;; bfr-ring-ring
-  (let ((ring (make-bfr-ring bfr-test-ring-name)))
-    (should (bfr-ring-ring ring))))
+  (let ((bfr-ring (make-bfr-ring bfr-0-ring-name)))
+    (should (bfr-ring-ring bfr-ring))))
+
+(ert-deftest buffer-ring-add-test ()
+  (fixture-0
+   (lambda ()
+     (let ((buffer (generate-new-buffer bfr-test-name-prefix)))
+       (with-current-buffer buffer
+         (buffer-ring-add "new-ring")
+         (should (dyn-ring-contains-p buffer-ring-torus
+                                      (car (bfr-get-rings))))
+         (should (dyn-ring-contains-p (bfr-ring-ring (bfr-current-ring))
+                                      (current-buffer)))
+         (should (= 1 (bfr-ring-size)))))))
+
+  (fixture-1
+   (lambda ()
+     (let ((buffer (generate-new-buffer bfr-test-name-prefix)))
+       (with-current-buffer buffer
+         (buffer-ring-add (bfr-ring-name bring))
+         (should (dyn-ring-contains-p buffer-ring-torus
+                                      (car (bfr-get-rings))))
+         (should (dyn-ring-contains-p (bfr-ring-ring (bfr-current-ring))
+                                      (current-buffer)))
+         (should (= 1 (bfr-ring-size)))))))
+
+  (fixture-2-1-1
+   (lambda ()
+     (should (dyn-ring-contains-p (bfr-ring-ring bring0)
+                                  buffer))
+     (should (dyn-ring-contains-p (bfr-ring-ring bring1)
+                                  buffer))))
+
+  (fixture-3-1-1-2
+   (lambda ()
+     (should (dyn-ring-contains-p (bfr-ring-ring bring0)
+                                  buffer))
+     (should (dyn-ring-contains-p (bfr-ring-ring bring1)
+                                  buffer))
+     (should-not (dyn-ring-contains-p (bfr-ring-ring bring2)
+                                      buffer))))
+
+  (fixture-3-0-2-2
+   (lambda ()
+     (should-not (dyn-ring-contains-p (bfr-ring-ring bring0)
+                                      buffer))
+     (should (dyn-ring-contains-p (bfr-ring-ring bring1)
+                                  buffer))
+     (should (dyn-ring-contains-p (bfr-ring-ring bring2)
+                                  buffer))))
+
+  (fixture-3-0-1-3
+   (lambda ()
+     (should-not (dyn-ring-contains-p (bfr-ring-ring bring0)
+                                      buffer))
+     (should (dyn-ring-contains-p (bfr-ring-ring bring1)
+                                  buffer))
+     (should (dyn-ring-contains-p (bfr-ring-ring bring2)
+                                  buffer)))))
