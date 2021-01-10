@@ -164,7 +164,10 @@
                                     (car (bfr-get-rings buffer))))
        (should (dyn-ring-contains-p (bfr-ring-ring (bfr-current-ring))
                                     buffer))
-       (should (= 1 (bfr-ring-size))))))
+       (should (= 1 (bfr-ring-size)))
+       ;; cleanup
+       (dyn-ring-destroy (bfr-ring-ring (bfr-current-ring)))
+       (kill-buffer buffer))))
 
   (fixture-1
    (lambda ()
@@ -175,7 +178,9 @@
                                     (car (bfr-get-rings buffer))))
        (should (dyn-ring-contains-p (bfr-ring-ring (bfr-current-ring))
                                     buffer))
-       (should (= 1 (bfr-ring-size))))))
+       (should (= 1 (bfr-ring-size)))
+       ;; cleanup
+       (kill-buffer buffer))))
 
   (fixture-2-1-1
    (lambda ()
