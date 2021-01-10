@@ -31,28 +31,36 @@
   (unwind-protect
       (progn (setq buffer-ring-torus (make-dyn-ring))
              (funcall body))
-    (setq buffer-ring-torus (make-dyn-ring))))
+    (dyn-ring-destroy buffer-ring-torus)))
 
 (defun fixture-1 (body)
   ;; 1 empty buffer ring
-  (unwind-protect
-      (progn (setq buffer-ring-torus (make-dyn-ring))
-             (let ((bring (bfr-torus-get-ring bfr-0-ring-name)))
-               (funcall body)))
-    (setq buffer-ring-torus (make-dyn-ring))))
+  (let ((bring nil))
+    (unwind-protect
+        (progn (setq buffer-ring-torus (make-dyn-ring))
+               (let ((bring (bfr-torus-get-ring bfr-0-ring-name)))
+                 (funcall body)))
+      (dyn-ring-destroy buffer-ring-torus)
+      (dyn-ring-destroy bring))))
 
 (defun fixture-2 (body)
   ;; 2 buffer rings: empty, 1 element
-  (unwind-protect
-      (progn
-        (setq buffer-ring-torus (make-dyn-ring))
-        (let* ((bring0 (bfr-torus-get-ring bfr-0-ring-name))
-               (bring1 (bfr-torus-get-ring bfr-1-ring-name))
-               (buffer (generate-new-buffer bfr-test-name-prefix)))
-          (with-current-buffer buffer
-            (buffer-ring-add (bfr-ring-name bring1)))
-          (funcall body)))
-    (setq buffer-ring-torus (make-dyn-ring))))
+  (let ((bring0 nil)
+        (bring1 nil)
+        (buffer nil))
+    (unwind-protect
+        (progn
+          (setq buffer-ring-torus (make-dyn-ring))
+          (let* ((bring0 (bfr-torus-get-ring bfr-0-ring-name))
+                 (bring1 (bfr-torus-get-ring bfr-1-ring-name))
+                 (buffer (generate-new-buffer bfr-test-name-prefix)))
+            (with-current-buffer buffer
+              (buffer-ring-add (bfr-ring-name bring1)))
+            (funcall body)))
+      (dyn-ring-destroy buffer-ring-torus)
+      (dyn-ring-destroy bring0)
+      (dyn-ring-destroy bring1)
+      (kill-buffer buffer))))
 
 (defun fixture-2-1-1 (body2)
   ;; 2 buffer rings: empty, 1 element
@@ -65,23 +73,35 @@
 
 (defun fixture-3 (body)
   ;; 3 buffer rings: empty, 1 element, 2 elements
-  (unwind-protect
-      (progn
-        (setq buffer-ring-torus (make-dyn-ring))
-        (let* ((bring0 (bfr-torus-get-ring bfr-0-ring-name))
-               (bring1 (bfr-torus-get-ring bfr-1-ring-name))
-               (bring2 (bfr-torus-get-ring bfr-2-ring-name))
-               (buf1 (generate-new-buffer bfr-test-name-prefix))
-               (buf2 (generate-new-buffer bfr-test-name-prefix))
-               (buf3 (generate-new-buffer bfr-test-name-prefix)))
-          (with-current-buffer buf1
-            (buffer-ring-add (bfr-ring-name bring1)))
-          (with-current-buffer buf2
-            (buffer-ring-add (bfr-ring-name bring2)))
-          (with-current-buffer buf3
-            (buffer-ring-add (bfr-ring-name bring2)))
-          (funcall body)))
-    (setq buffer-ring-torus (make-dyn-ring))))
+  (let ((bring0 nil)
+        (bring1 nil)
+        (bring2 nil)
+        (buf1 nil)
+        (buf2 nil)
+        (buf3 nil))
+    (unwind-protect
+        (progn
+          (setq buffer-ring-torus (make-dyn-ring))
+          (let* ((bring0 (bfr-torus-get-ring bfr-0-ring-name))
+                 (bring1 (bfr-torus-get-ring bfr-1-ring-name))
+                 (bring2 (bfr-torus-get-ring bfr-2-ring-name))
+                 (buf1 (generate-new-buffer bfr-test-name-prefix))
+                 (buf2 (generate-new-buffer bfr-test-name-prefix))
+                 (buf3 (generate-new-buffer bfr-test-name-prefix)))
+            (with-current-buffer buf1
+              (buffer-ring-add (bfr-ring-name bring1)))
+            (with-current-buffer buf2
+              (buffer-ring-add (bfr-ring-name bring2)))
+            (with-current-buffer buf3
+              (buffer-ring-add (bfr-ring-name bring2)))
+            (funcall body)))
+      (dyn-ring-destroy buffer-ring-torus)
+      (dyn-ring-destroy bring0)
+      (dyn-ring-destroy bring1)
+      (dyn-ring-destroy bring2)
+      (kill-buffer buf1)
+      (kill-buffer buf2)
+      (kill-buffer buf3))))
 
 (defun fixture-3-1-1-2 (body2)
   ;; 3 buffer rings: empty, 1 element, 2 elements
