@@ -457,49 +457,103 @@
      (should (= 2 (dyn-ring-size (bfr-ring-ring bring2)))))))
 
 (ert-deftest buffer-ring-next-buffer-test ()
+
+  (setq sut #'buffer-ring-next-buffer)
+
   (fixture-0
    (lambda ()
-     (should-not (buffer-ring-next-buffer))))
+     (should-not (funcall sut))))
 
   (fixture-1-0
    (lambda ()
      (with-current-buffer buffer
-       (should-not (buffer-ring-next-buffer))
+       (should-not (funcall sut))
        (should (eq (current-buffer) buffer)))))
 
   (fixture-1-1
    (lambda ()
      (with-current-buffer buffer
-       (should (buffer-ring-next-buffer))
+       (should (funcall sut))
        (should (eq (current-buffer) buffer)))))
 
   ;; head is buf2 initially
   (fixture-1-2
    (lambda ()
-     (should (buffer-ring-next-buffer))
+     (should (funcall sut))
      (should (eq (current-buffer) buffer))))
   (fixture-1-2
    (lambda ()
      (should
-      (progn (buffer-ring-next-buffer)
-             (buffer-ring-next-buffer)))
+      (progn (funcall sut)
+             (funcall sut)))
      (should (eq (current-buffer) buf2))))
 
   ;; head is buf3 initially
   (fixture-1-3
    (lambda ()
-     (should (buffer-ring-next-buffer))
+     (should (funcall sut))
      (should (eq (current-buffer) buf2))))
   (fixture-1-3
    (lambda ()
      (should
-      (progn (buffer-ring-next-buffer)
-             (buffer-ring-next-buffer)))
+      (progn (funcall sut)
+             (funcall sut)))
      (should (eq (current-buffer) buffer))))
   (fixture-1-3
    (lambda ()
      (should
-      (progn (buffer-ring-next-buffer)
-             (buffer-ring-next-buffer)
-             (buffer-ring-next-buffer)))
+      (progn (funcall sut)
+             (funcall sut)
+             (funcall sut)))
+     (should (eq (current-buffer) buf3)))))
+
+(ert-deftest buffer-ring-prev-buffer-test ()
+
+  (setq sut #'buffer-ring-prev-buffer)
+
+  (fixture-0
+   (lambda ()
+     (should-not (funcall sut))))
+
+  (fixture-1-0
+   (lambda ()
+     (with-current-buffer buffer
+       (should-not (funcall sut))
+       (should (eq (current-buffer) buffer)))))
+
+  (fixture-1-1
+   (lambda ()
+     (with-current-buffer buffer
+       (should (funcall sut))
+       (should (eq (current-buffer) buffer)))))
+
+  ;; head is buf2 initially
+  (fixture-1-2
+   (lambda ()
+     (should (funcall sut))
+     (should (eq (current-buffer) buffer))))
+  (fixture-1-2
+   (lambda ()
+     (should
+      (progn (funcall sut)
+             (funcall sut)))
+     (should (eq (current-buffer) buf2))))
+
+  ;; head is buf3 initially
+  (fixture-1-3
+   (lambda ()
+     (should (funcall sut))
+     (should (eq (current-buffer) buffer))))
+  (fixture-1-3
+   (lambda ()
+     (should
+      (progn (funcall sut)
+             (funcall sut)))
+     (should (eq (current-buffer) buf2))))
+  (fixture-1-3
+   (lambda ()
+     (should
+      (progn (funcall sut)
+             (funcall sut)
+             (funcall sut)))
      (should (eq (current-buffer) buf3)))))
