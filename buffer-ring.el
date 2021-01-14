@@ -94,12 +94,22 @@
 
 (defun bfr-register-ring (buffer bfr-ring)
   "Register that BUFFER has been added to BFR-RING."
-  (let* ((key (buffer-name buffer))
-         (rings (ht-get buffer-rings key)))
+  (let ((key (buffer-name buffer)))
     (ht-set! buffer-rings
              key
-             (cons bfr-ring
-                   rings))))
+             (delete-dups
+              (cons bfr-ring
+                    (ht-get buffer-rings
+                            key))))))
+
+(defun bfr-delete-ring (buffer bfr-ring)
+  "Delete BFR-RING from the list of rings for BUFFER."
+  (let ((key (buffer-name buffer)))
+    (ht-set! buffer-rings
+             key
+             (remq bfr-ring
+                   (ht-get buffer-rings
+                           key)))))
 
 ;;
 ;; buffer ring interface
@@ -144,11 +154,17 @@
    This modifies the ring, it does not kill the buffer.
   "
   (interactive)
-  (let ((ring (bfr-ring-ring (bfr-current-ring)))
-        (buffer (current-buffer)))
-    (if (dyn-ring-delete ring buffer)
-        (message "Deleted buffer from ring %s" (bfr-current-ring-name))
-      (message "This buffer is not in the current ring"))))
+  (if (bfr-current-ring)
+      (let ((ring (bfr-ring-ring (bfr-current-ring)))
+            (buffer (current-buffer)))
+        (if (dyn-ring-delete ring buffer)
+            (progn
+              (bfr-delete-ring buffer (bfr-current-ring))
+              (message "Deleted buffer from ring %s" (bfr-current-ring-name)))
+          (message "This buffer is not in the current ring")
+          nil))
+    (message "No active buffer ring.")
+    nil))
 
 (defun buffer-ring-drop-buffer ()
   "Drop buffer from all rings."
@@ -252,11 +268,11 @@
                                            (string= name
                                                     (bfr-ring-name r))))))
     (when segment
-      (let ((ring (dyn-ring-segment-value segment)))
+      (let ((bfr-ring (dyn-ring-segment-value segment)))
         (dyn-ring-break-insert buffer-ring-torus
-                               ring)
+                               bfr-ring)
         (switch-to-buffer
-         (dyn-ring-value ring))))))
+         (dyn-ring-value (bfr-ring-ring bfr-ring)))))))
 
 (defun bfr-current-ring-name ()
   (bfr-ring-name (dyn-ring-value buffer-ring-torus)))
