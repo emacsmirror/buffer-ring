@@ -87,14 +87,18 @@
   (ht)
   "Buffer to rings hash.")
 
+(defun bfr-registry-get-key (buffer)
+  "Key to use for BUFFER in the buffer registry."
+  (buffer-name buffer))
+
 (defun bfr-get-rings (&optional buffer)
   "All rings that BUFFER is part of."
   (let ((buffer (or buffer (current-buffer))))
-    (ht-get buffer-rings (buffer-name buffer))))
+    (ht-get buffer-rings (bfr-registry-get-key buffer))))
 
 (defun bfr-register-ring (buffer bfr-ring)
   "Register that BUFFER has been added to BFR-RING."
-  (let ((key (buffer-name buffer)))
+  (let ((key (bfr-registry-get-key buffer)))
     (ht-set! buffer-rings
              key
              (delete-dups
@@ -144,32 +148,43 @@
            nil)
           (t (dyn-ring-insert ring buffer)
              (bfr-register-ring buffer bfr-ring)
-             (add-hook 'kill-buffer-hook 'buffer-ring-drop-buffer t t)
+             (with-current-buffer buffer
+               (add-hook 'kill-buffer-hook 'buffer-ring-drop-buffer t t))
              t))))
 
-(defun buffer-ring-delete ()
+(defun buffer-ring-delete (&optional buffer)
   "buffer-ring-delete
 
    Delete the current buffer from the current ring.
    This modifies the ring, it does not kill the buffer.
   "
   (interactive)
-  (if (bfr-current-ring)
-      (let ((ring (bfr-ring-ring (bfr-current-ring)))
-            (buffer (current-buffer)))
-        (if (dyn-ring-delete ring buffer)
-            (progn
-              (bfr-delete-ring buffer (bfr-current-ring))
-              (message "Deleted buffer from ring %s" (bfr-current-ring-name)))
-          (message "This buffer is not in the current ring")
-          nil))
-    (message "No active buffer ring.")
-    nil))
+  (let ((buffer (or buffer (current-buffer))))
+    (if (bfr-current-ring)
+        (let ((ring (bfr-ring-ring (bfr-current-ring))))
+          (if (dyn-ring-delete ring buffer)
+              (progn
+                (bfr-delete-ring buffer (bfr-current-ring))
+                (message "Deleted buffer %s from ring %s"
+                         buffer
+                         (bfr-current-ring-name)))
+            (message "This buffer is not in the current ring")
+            nil))
+      (message "No active buffer ring.")
+      nil)))
 
 (defun buffer-ring-drop-buffer ()
-  "Drop buffer from all rings."
+  "Drop buffer from all rings.
+
+Not to be confused with the little-known evil cousin
+to the koala buffer."
   (interactive)
-  (remove-hook 'kill-buffer-hook 'buffer-ring-drop-buffer t))
+  (let ((buffer (current-buffer)))
+    (save-excursion
+      (dolist (bfr-ring (bfr-get-rings buffer))
+        (bfr-torus-switch-to-ring (bfr-ring-name bfr-ring))
+        (buffer-ring-delete buffer)))
+    (remove-hook 'kill-buffer-hook 'buffer-ring-drop-buffer t)))
 
 (defun buffer-ring-list-buffers ()
   "buffer-ring-list-buffers
@@ -188,12 +203,14 @@
 
 ;; TODO: standardize interface names
 (defun bfr-ring--rotate (direction)
-  (let ((ring (bfr-ring-ring (bfr-current-ring))))
-    (if (< (dyn-ring-size ring) 2)
-        (message "There is only one buffer in the ring.")
-      (progn
-        (funcall direction ring)
-        (switch-to-buffer (dyn-ring-value ring))))))
+  (let ((bfr-ring (bfr-current-ring)))
+    (when bfr-ring
+      (let ((ring (bfr-ring-ring bfr-ring)))
+        (unless (dyn-ring-empty-p ring)
+          (when (= 1 (dyn-ring-size ring))
+            (message "There is only one buffer in the ring."))
+          (funcall direction ring)
+          (switch-to-buffer (dyn-ring-value ring)))))))
 
 (defun buffer-ring-prev-buffer ()
   "buffer-ring-prev-buffer
@@ -260,6 +277,7 @@
       (message "Creating a new ring \"%s\"" name)
       (bfr-torus--create-ring name))))
 
+;; TODO: if current buffer is in the new ring, stay there / break-insert
 (defun bfr-torus-switch-to-ring (name)
   "Switch to ring NAME."
   (interactive)
