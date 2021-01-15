@@ -241,11 +241,10 @@ to the koala buffer."
   ;; would assume the current buffer doesn't even exist
   ;; or rather, would assume that we are currently at head
   (let* ((buffer (current-buffer))
-         (bfr-rings (bfr-get-rings buffer)))
-    (cond ((dyn-ring-contains-p (bfr-current-ring)
-                                buffer)
-           (dyn-ring-break-insert (bfr-ring-ring (bfr-current-ring))
-                                  (current-buffer)))
+         (bfr-rings (bfr-get-rings buffer))
+         (ring (bfr-ring-ring (bfr-current-ring))))
+    (cond ((dyn-ring-contains-p ring buffer)
+           (dyn-ring-break-insert ring buffer))
           (bfr-rings
            (bfr-torus-switch-to-ring
             (bfr-ring-name (car bfr-rings)))))))
@@ -292,25 +291,49 @@ to the koala buffer."
         (switch-to-buffer
          (dyn-ring-value (bfr-ring-ring bfr-ring)))))))
 
-(defun bfr-current-ring-name ()
-  (bfr-ring-name (dyn-ring-value buffer-ring-torus)))
-
 (defun bfr-current-ring ()
   (dyn-ring-value buffer-ring-torus))
 
-(defun bfr-torus--rotate ( direction )
-  (if (< (dyn-ring-size buffer-ring-torus) 2)
-    (message "There is only one buffer ring; ignoring the rotate global ring command")
-    ;; rotate past any empties
-    (if (dyn-ring-rotate-until buffer-ring-torus
-                               direction
-                               (lambda (ring)
-                                 (not (dyn-ring-empty-p ring))))
-      (progn
-        (message "switching to ring %s" (bfr-current-ring-name))
-        (switch-to-buffer
-         (dyn-ring-value (bfr-current-ring))))
-      (message "All of the buffer rings are empty. Keeping the current ring position")) ))
+(defun bfr-current-ring-name ()
+  (bfr-ring-name (bfr-current-ring)))
+
+(defun bfr-ring-current-buffer (bfr-ring)
+  "Current buffer in BFR-RING."
+  (dyn-ring-value (bfr-ring-ring bfr-ring)))
+
+(defun bfr-torus--rotate (direction)
+  (let ((buffer (current-buffer))
+        (initial-bfr-ring (bfr-current-ring)))
+    (cond ((dyn-ring-empty-p buffer-ring-torus)
+           (message "There are no rings in the buffer torus.")
+           nil)
+          ((= 1 (dyn-ring-size buffer-ring-torus))
+           (message "There is only one buffer ring.")
+           (unless (dyn-ring-empty-p (bfr-ring-ring (bfr-current-ring)))
+             (switch-to-buffer
+              (bfr-ring-current-buffer (bfr-current-ring))))
+           t)
+          (t
+           ;; rotate past any empties
+           (if (dyn-ring-rotate-until buffer-ring-torus
+                                      direction
+                                      (lambda (bfr-ring)
+                                        ;; we want to rotate at least once
+                                        (and (not (eq initial-bfr-ring
+                                                      bfr-ring))
+                                             (not (dyn-ring-empty-p
+                                                   (bfr-ring-ring bfr-ring))))))
+               (let ((ring-name (bfr-current-ring-name))
+                     (ring (bfr-ring-ring (bfr-current-ring))))
+                 (message "switching to ring %s" ring-name)
+                 ;; if the original buffer is present in the new ring,
+                 ;; remain there, accounting for recency in the new ring
+                 (when (dyn-ring-contains-p ring buffer)
+                   (dyn-ring-break-insert ring buffer))
+                 (switch-to-buffer
+                  (bfr-ring-current-buffer (bfr-current-ring))))
+             (message "All of the buffer rings are empty. Keeping the current ring position")
+             nil)))))
 
 (defun buffer-torus-next-ring ()
   "buffer-torus-next-ring
@@ -344,7 +367,10 @@ to the koala buffer."
    Delete the entire current buffer-ring.
   "
   (interactive)
-  (dyn-ring-delete buffer-ring-torus (bfr-current-ring)))
+  (let ((bfr-ring (bfr-current-ring)))
+    (dyn-ring-delete buffer-ring-torus
+                     bfr-ring)
+    (dyn-ring-destroy (bfr-ring-ring bfr-ring))))
 
 (provide 'buffer-ring)
 ;;; buffer-ring.el ends here

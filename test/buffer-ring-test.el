@@ -117,14 +117,12 @@
                       buffer)
      (funcall body2))))
 
-(defun fixture-3-0-1-2 (body)
-  ;; 3 buffer rings: empty, 1 element, 2 elements
+(defun fixture-3-0-1-0 (body)
+  ;; 3 buffer rings: empty, 1 element, empty
   (let ((bring0 nil)
         (bring1 nil)
         (bring2 nil)
-        (buf1 nil)
-        (buf2 nil)
-        (buf3 nil))
+        (buf1 nil))
     (unwind-protect
         (progn
           (setq buffer-ring-torus (make-dyn-ring))
@@ -132,25 +130,43 @@
           (setq bring0 (bfr-torus-get-ring bfr-0-ring-name)
                 bring1 (bfr-torus-get-ring bfr-1-ring-name)
                 bring2 (bfr-torus-get-ring bfr-2-ring-name)
-                buf1 (generate-new-buffer bfr-test-name-prefix)
-                buf2 (generate-new-buffer bfr-test-name-prefix)
-                buf3 (generate-new-buffer bfr-test-name-prefix))
+                buf1 (generate-new-buffer bfr-test-name-prefix))
           (buffer-ring-add (bfr-ring-name bring1)
                            buf1)
-          (buffer-ring-add (bfr-ring-name bring2)
-                           buf2)
-          (buffer-ring-add (bfr-ring-name bring2)
-                           buf3)
           (funcall body))
       (kill-buffer buf1)
-      (kill-buffer buf2)
-      (kill-buffer buf3)
       (dyn-ring-destroy buffer-ring-torus)
       (dyn-ring-destroy (bfr-ring-ring bring0))
       (dyn-ring-destroy (bfr-ring-ring bring1))
       (dyn-ring-destroy (bfr-ring-ring bring2)))))
 
-(defun fixture-3-1-1-2 (body2)
+(defun fixture-3-0-1-1 (body2)
+  ;; 3 buffer rings: empty, 1 element, 1 element
+  (fixture-3-0-1-0
+   (lambda ()
+     (let ((buf2 nil))
+       (unwind-protect
+           (progn
+             (setq buf2 (generate-new-buffer bfr-test-name-prefix))
+             (buffer-ring-add (bfr-ring-name bring2)
+                              buf2)
+             (funcall body2))
+         (kill-buffer buf2))))))
+
+(defun fixture-3-0-1-2 (body3)
+  ;; 3 buffer rings: empty, 1 element, 2 elements
+  (fixture-3-0-1-1
+   (lambda ()
+     (let ((buf3 nil))
+       (unwind-protect
+           (progn
+             (setq buf3 (generate-new-buffer bfr-test-name-prefix))
+             (buffer-ring-add (bfr-ring-name bring2)
+                              buf3)
+             (funcall body3))
+         (kill-buffer buf3))))))
+
+(defun fixture-3-1-1-2 (body4)
   ;; 3 buffer rings: empty, 1 element, 2 elements
   ;; add a buffer to the empty ring
   (fixture-3-0-1-2
@@ -158,9 +174,9 @@
      (let ((buffer buf1))
        (buffer-ring-add (bfr-ring-name bring0)
                         buffer)
-       (funcall body2)))))
+       (funcall body4)))))
 
-(defun fixture-3-0-2-2 (body2)
+(defun fixture-3-0-2-2 (body4)
   ;; 3 buffer rings: empty, 1 element, 2 elements
   ;; add a buffer to the 1 ring
   (fixture-3-0-1-2
@@ -168,9 +184,9 @@
      (let ((buffer buf2))
        (buffer-ring-add (bfr-ring-name bring1)
                         buffer)
-       (funcall body2)))))
+       (funcall body4)))))
 
-(defun fixture-3-0-1-3 (body2)
+(defun fixture-3-0-1-3 (body4)
   ;; 3 buffer rings: empty, 1 element, 2 elements
   ;; add a buffer to the 2 ring
   (fixture-3-0-1-2
@@ -178,7 +194,7 @@
      (let ((buffer buf1))
        (buffer-ring-add (bfr-ring-name bring2)
                         buffer)
-       (funcall body2)))))
+       (funcall body4)))))
 
 ;;
 ;; Test utilities
@@ -406,56 +422,6 @@
      (should (buffer-ring-delete buffer))
      (should (= 2 (dyn-ring-size (bfr-ring-ring bring2)))))))
 
-(ert-deftest buffer-is-killed-test ()
-  (fixture-1-0
-   (lambda ()
-     (kill-buffer buffer)
-     (should (dyn-ring-empty-p (bfr-ring-ring (bfr-current-ring))))))
-
-  (fixture-1-1
-   (lambda ()
-     (kill-buffer buffer)
-     (should-not (dyn-ring-contains-p (bfr-ring-ring bring)
-                                      buffer))))
-  (fixture-1-1
-   (lambda ()
-     (let ((key (bfr-registry-get-key buffer)))
-       (kill-buffer buffer)
-       (should-not (member bring (ht-get buffer-rings key))))))
-  (fixture-1-1
-   (lambda ()
-     (kill-buffer buffer)
-     (should (= 0 (dyn-ring-size (bfr-ring-ring bring))))))
-
-  (fixture-3-0-1-3
-   (lambda ()
-     (kill-buffer buffer)
-     (should-not (dyn-ring-contains-p (bfr-ring-ring bring1)
-                                      buffer))))
-  (fixture-3-0-1-3
-   (lambda ()
-     (kill-buffer buffer)
-     (should-not (dyn-ring-contains-p (bfr-ring-ring bring2)
-                                      buffer))))
-  (fixture-3-0-1-3
-   (lambda ()
-     (let ((key (bfr-registry-get-key buffer)))
-       (kill-buffer buffer)
-       (should-not (member bring1 (ht-get buffer-rings key))))))
-  (fixture-3-0-1-3
-   (lambda ()
-     (let ((key (bfr-registry-get-key buffer)))
-       (kill-buffer buffer)
-       (should-not (member bring2 (ht-get buffer-rings key))))))
-  (fixture-3-0-1-3
-   (lambda ()
-     (kill-buffer buffer)
-     (should (= 0 (dyn-ring-size (bfr-ring-ring bring1))))))
-  (fixture-3-0-1-3
-   (lambda ()
-     (kill-buffer buffer)
-     (should (= 2 (dyn-ring-size (bfr-ring-ring bring2)))))))
-
 (ert-deftest buffer-ring-next-buffer-test ()
 
   (setq sut #'buffer-ring-next-buffer)
@@ -475,6 +441,16 @@
      (with-current-buffer buffer
        (should (funcall sut))
        (should (eq (current-buffer) buffer)))))
+
+  ;; when abroad, rotating the ring changes to a ring buffer
+  (fixture-1-1
+   (lambda ()
+     (let ((new-buf (generate-new-buffer bfr-test-name-prefix)))
+       (unwind-protect
+           (with-current-buffer new-buf
+             (should (funcall sut))
+             (should (eq (current-buffer) buffer)))
+         (kill-buffer new-buf)))))
 
   ;; head is buf2 initially
   (fixture-1-2
@@ -557,3 +533,164 @@
              (funcall sut)
              (funcall sut)))
      (should (eq (current-buffer) buf3)))))
+
+(ert-deftest buffer-torus-next-ring-test ()
+
+  (setq sut #'buffer-torus-next-ring)
+
+  (fixture-0
+   (lambda ()
+     (should-not (funcall sut))))
+
+  (fixture-1-0
+   (lambda ()
+     (with-current-buffer buffer
+       (should (funcall sut))
+       (should (eq (current-buffer) buffer)))))
+
+  (fixture-1-1
+   (lambda ()
+     (with-current-buffer buffer
+       (should (funcall sut))
+       (should (eq (current-buffer) buffer)))))
+
+  ;; when abroad, rotating the torus changes to a ring buffer
+  (fixture-1-1
+   (lambda ()
+     (let ((new-buf (generate-new-buffer bfr-test-name-prefix)))
+       (unwind-protect
+           (with-current-buffer new-buf
+             (should (funcall sut))
+             (should (eq (current-buffer) buffer)))
+         (kill-buffer new-buf)))))
+
+  (fixture-2-0-1
+   (lambda ()
+     (let ((new-buf (generate-new-buffer bfr-test-name-prefix)))
+       (unwind-protect
+           (with-current-buffer new-buf
+             (buffer-ring-add bfr-0-ring-name)
+             (bfr-torus-switch-to-ring bfr-0-ring-name)
+             (should (funcall sut))
+             (should (eq (current-buffer) buffer)))
+         (kill-buffer new-buf)))))
+
+  ;; if buffer is present in the new ring but not at head,
+  ;; remain on it in the new ring
+  (fixture-2-1-1
+   ;; buffer is on both rings
+   (lambda ()
+     (let ((new-buf (generate-new-buffer bfr-test-name-prefix)))
+       (unwind-protect
+           (with-current-buffer new-buf
+             (buffer-ring-add bfr-0-ring-name)
+             (bfr-torus-switch-to-ring bfr-0-ring-name)
+             ;; go to a buffer not on ring 1
+             (dyn-ring-rotate-until (bfr-ring-ring (bfr-current-ring))
+                                    #'dyn-ring-rotate-right
+                                    (lambda (bfr)
+                                      (not (eq buffer bfr))))
+             ;; buffer is the only buffer in ring 1
+             ;; so it should become current
+             (bfr-torus-switch-to-ring bfr-1-ring-name)
+             ;; now switching back would a priori return to the head,
+             ;; which isn't buffer. But since buffer is present in
+             ;; the destination ring, it should remain current
+             (should (funcall sut))
+             (should (eq (current-buffer) buffer)))
+         (kill-buffer new-buf)))))
+
+  ;; does not rotate if all other rings are empty
+  (fixture-3-0-1-0
+   (lambda ()
+     (bfr-torus-switch-to-ring bfr-1-ring-name)
+     (with-current-buffer buf1
+       (should-not (funcall sut))
+       (should (eq (current-buffer) buf1))
+       (should (eq bring1 (bfr-current-ring))))))
+
+  ;; rotation with an empty ring
+  (fixture-3-0-1-1
+   (lambda ()
+     (bfr-torus-switch-to-ring bfr-1-ring-name)
+     (with-current-buffer buf1
+       (should (funcall sut))
+       (should (eq (current-buffer) buf2))
+       (should (eq bring2 (bfr-current-ring))))))
+  (fixture-3-0-1-1
+   (lambda ()
+     (bfr-torus-switch-to-ring bfr-2-ring-name)
+     (with-current-buffer buf2
+       (should (funcall sut))
+       (should (eq (current-buffer) buf1))
+       (should (eq bring1 (bfr-current-ring))))))
+
+  ;; rotation with same buffer in multiple rings
+  (fixture-3-0-1-3
+   (lambda ()
+     (bfr-torus-switch-to-ring bfr-1-ring-name)
+     (with-current-buffer buf1
+       (should (funcall sut))
+       (should (eq (current-buffer) buf1)) ; stays in same buffer
+       (should (eq bring2 (bfr-current-ring))))))
+  (fixture-3-0-1-3
+   (lambda ()
+     (bfr-torus-switch-to-ring bfr-2-ring-name)
+     (with-current-buffer buf1
+       (should (funcall sut))
+       (should (eq (current-buffer) buf1)) ; stays in same buffer
+       (should (eq bring1 (bfr-current-ring)))))))
+
+;;
+;; External triggers
+;;
+
+(ert-deftest buffer-is-killed-test ()
+  (fixture-1-0
+   (lambda ()
+     (kill-buffer buffer)
+     (should (dyn-ring-empty-p (bfr-ring-ring (bfr-current-ring))))))
+
+  (fixture-1-1
+   (lambda ()
+     (kill-buffer buffer)
+     (should-not (dyn-ring-contains-p (bfr-ring-ring bring)
+                                      buffer))))
+  (fixture-1-1
+   (lambda ()
+     (let ((key (bfr-registry-get-key buffer)))
+       (kill-buffer buffer)
+       (should-not (member bring (ht-get buffer-rings key))))))
+  (fixture-1-1
+   (lambda ()
+     (kill-buffer buffer)
+     (should (= 0 (dyn-ring-size (bfr-ring-ring bring))))))
+
+  (fixture-3-0-1-3
+   (lambda ()
+     (kill-buffer buffer)
+     (should-not (dyn-ring-contains-p (bfr-ring-ring bring1)
+                                      buffer))))
+  (fixture-3-0-1-3
+   (lambda ()
+     (kill-buffer buffer)
+     (should-not (dyn-ring-contains-p (bfr-ring-ring bring2)
+                                      buffer))))
+  (fixture-3-0-1-3
+   (lambda ()
+     (let ((key (bfr-registry-get-key buffer)))
+       (kill-buffer buffer)
+       (should-not (member bring1 (ht-get buffer-rings key))))))
+  (fixture-3-0-1-3
+   (lambda ()
+     (let ((key (bfr-registry-get-key buffer)))
+       (kill-buffer buffer)
+       (should-not (member bring2 (ht-get buffer-rings key))))))
+  (fixture-3-0-1-3
+   (lambda ()
+     (kill-buffer buffer)
+     (should (= 0 (dyn-ring-size (bfr-ring-ring bring1))))))
+  (fixture-3-0-1-3
+   (lambda ()
+     (kill-buffer buffer)
+     (should (= 2 (dyn-ring-size (bfr-ring-ring bring2)))))))
