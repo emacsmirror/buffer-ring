@@ -276,20 +276,26 @@ to the koala buffer."
       (message "Creating a new ring \"%s\"" name)
       (bfr-torus--create-ring name))))
 
-;; TODO: if current buffer is in the new ring, stay there / break-insert
 (defun bfr-torus-switch-to-ring (name)
   "Switch to ring NAME."
   (interactive)
-  (let ((segment (dyn-ring-find-forwards buffer-ring-torus
+  (let ((buffer (current-buffer))
+        (segment (dyn-ring-find-forwards buffer-ring-torus
                                          (lambda (r)
                                            (string= name
                                                     (bfr-ring-name r))))))
     (when segment
-      (let ((bfr-ring (dyn-ring-segment-value segment)))
+      (let* ((bfr-ring (dyn-ring-segment-value segment))
+             (ring (bfr-ring-ring bfr-ring)))
+        ;; switch to ring and reinsert it at the head
         (dyn-ring-break-insert buffer-ring-torus
                                bfr-ring)
+        ;; if original buffer is in the new ring, stay there
+        ;; and reinsert it to account for recency
+        (when (dyn-ring-contains-p ring buffer)
+          (dyn-ring-break-insert ring buffer))
         (switch-to-buffer
-         (dyn-ring-value (bfr-ring-ring bfr-ring)))))))
+         (bfr-ring-current-buffer bfr-ring))))))
 
 (defun bfr-current-ring ()
   (dyn-ring-value buffer-ring-torus))

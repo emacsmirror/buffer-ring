@@ -119,6 +119,7 @@
 
 (defun fixture-3-0-1-0 (body)
   ;; 3 buffer rings: empty, 1 element, empty
+  ;; [2] - 1 - 0 - [2]
   (let ((bring0 nil)
         (bring1 nil)
         (bring2 nil)
@@ -142,6 +143,7 @@
 
 (defun fixture-3-0-1-1 (body2)
   ;; 3 buffer rings: empty, 1 element, 1 element
+  ;; [2] - 1 - 0 - [2]
   (fixture-3-0-1-0
    (lambda ()
      (let ((buf2 nil))
@@ -153,8 +155,23 @@
              (funcall body2))
          (kill-buffer buf2))))))
 
+(defun fixture-3-1-1-1 (body3)
+  ;; 3 buffer rings: 1 distinct buffer in each
+  ;; [2] - 1 - 0 - [2]
+  (fixture-3-0-1-1
+   (lambda ()
+     (let ((buf3 nil))
+       (unwind-protect
+           (progn
+             (setq buf3 (generate-new-buffer bfr-test-name-prefix))
+             (buffer-ring-add (bfr-ring-name bring0)
+                              buf3)
+             (funcall body3))
+         (kill-buffer buf3))))))
+
 (defun fixture-3-0-1-2 (body3)
   ;; 3 buffer rings: empty, 1 element, 2 elements
+  ;; [2] - 1 - 0 - [2]
   (fixture-3-0-1-1
    (lambda ()
      (let ((buf3 nil))
@@ -168,6 +185,7 @@
 
 (defun fixture-3-1-1-2 (body4)
   ;; 3 buffer rings: empty, 1 element, 2 elements
+  ;; [2] - 1 - 0 - [2]
   ;; add a buffer to the empty ring
   (fixture-3-0-1-2
    (lambda ()
@@ -178,6 +196,7 @@
 
 (defun fixture-3-0-2-2 (body4)
   ;; 3 buffer rings: empty, 1 element, 2 elements
+  ;; [2] - 1 - 0 - [2]
   ;; add a buffer to the 1 ring
   (fixture-3-0-1-2
    (lambda ()
@@ -188,6 +207,7 @@
 
 (defun fixture-3-0-1-3 (body4)
   ;; 3 buffer rings: empty, 1 element, 2 elements
+  ;; [2] - 1 - 0 - [2]
   ;; add a buffer to the 2 ring
   (fixture-3-0-1-2
    (lambda ()
@@ -217,6 +237,56 @@
   ;; bfr-ring-ring
   (let ((bfr-ring (make-bfr-ring bfr-0-ring-name)))
     (should (bfr-ring-ring bfr-ring))))
+
+(ert-deftest bfr-torus-test ()
+  ;; create new ring
+  (should (bfr-torus-get-ring bfr-0-ring-name))
+
+  ;; get existing ring
+  (let ((bfr-ring (bfr-torus-get-ring bfr-0-ring-name)))
+    (should (eq bfr-ring (bfr-torus-get-ring bfr-0-ring-name)))))
+
+(ert-deftest bfr-torus-switch-to-ring-test ()
+  ;; does not switch to non-existent ring
+  (fixture-2-0-1
+   (lambda ()
+     (should-not (bfr-torus-switch-to-ring "non-existent"))))
+
+  ;; switch to ring preserves buffer if present
+  (fixture-2-1-1
+   ;; buffer is on both rings
+   (lambda ()
+     (let ((new-buf (generate-new-buffer bfr-test-name-prefix)))
+       (unwind-protect
+           (with-current-buffer new-buf
+             (buffer-ring-add bfr-0-ring-name)
+             (bfr-torus-switch-to-ring bfr-0-ring-name)
+             ;; go to a buffer not on ring 1
+             (dyn-ring-rotate-until (bfr-ring-ring (bfr-current-ring))
+                                    #'dyn-ring-rotate-right
+                                    (lambda (bfr)
+                                      (not (eq buffer bfr))))
+             ;; buffer is the only buffer in ring 1
+             ;; so it should become current
+             (bfr-torus-switch-to-ring bfr-1-ring-name)
+             ;; now switching back would a priori return to the head,
+             ;; which isn't buffer. But since buffer is present in
+             ;; the destination ring, it should remain current
+             (should (bfr-torus-switch-to-ring bfr-0-ring-name))
+             (should (eq (current-buffer) buffer)))
+         (kill-buffer new-buf)))))
+
+  ;; reorders ring to account for recency
+  (fixture-3-1-1-1
+   ;; [2] - 1 - 0 - [2]
+   (lambda ()
+     (bfr-torus-switch-to-ring bfr-1-ring-name)
+     ;; now changes to [1] - 2 - 0 - [1]
+     ;; which is a different ordering under the
+     ;; same rotation
+     (should (eq bring1 (bfr-current-ring)))
+     (buffer-torus-next-ring)
+     (should (eq bring2 (bfr-current-ring))))))
 
 (ert-deftest buffer-ring-add-test ()
   (fixture-0
@@ -624,6 +694,163 @@
        (should (funcall sut))
        (should (eq (current-buffer) buf1))
        (should (eq bring1 (bfr-current-ring))))))
+
+  ;; simple rotation with a 3-ring
+  (fixture-3-1-1-1
+   (lambda ()
+     ;; current ring is 2
+     ;; current buffer is buf2
+     (with-current-buffer buf2
+       (should (funcall sut))
+       (should (eq (current-buffer) buf1))
+       (should (eq bring1 (bfr-current-ring))))))
+  (fixture-3-1-1-1
+   (lambda ()
+     (with-current-buffer buf2
+       (should (progn (funcall sut)
+                      (funcall sut)))
+       (should (eq (current-buffer) buf3))
+       (should (eq bring0 (bfr-current-ring))))))
+  (fixture-3-1-1-1
+   (lambda ()
+     (with-current-buffer buf2
+       (should (progn (funcall sut)
+                      (funcall sut)
+                      (funcall sut)))
+       (should (eq (current-buffer) buf2))
+       (should (eq bring2 (bfr-current-ring))))))
+
+  ;; rotation with same buffer in multiple rings
+  (fixture-3-0-1-3
+   (lambda ()
+     (bfr-torus-switch-to-ring bfr-1-ring-name)
+     (with-current-buffer buf1
+       (should (funcall sut))
+       (should (eq (current-buffer) buf1)) ; stays in same buffer
+       (should (eq bring2 (bfr-current-ring))))))
+  (fixture-3-0-1-3
+   (lambda ()
+     (bfr-torus-switch-to-ring bfr-2-ring-name)
+     (with-current-buffer buf1
+       (should (funcall sut))
+       (should (eq (current-buffer) buf1)) ; stays in same buffer
+       (should (eq bring1 (bfr-current-ring)))))))
+
+(ert-deftest buffer-torus-prev-ring-test ()
+
+  (setq sut #'buffer-torus-prev-ring)
+
+  (fixture-0
+   (lambda ()
+     (should-not (funcall sut))))
+
+  (fixture-1-0
+   (lambda ()
+     (with-current-buffer buffer
+       (should (funcall sut))
+       (should (eq (current-buffer) buffer)))))
+
+  (fixture-1-1
+   (lambda ()
+     (with-current-buffer buffer
+       (should (funcall sut))
+       (should (eq (current-buffer) buffer)))))
+
+  ;; when abroad, rotating the torus changes to a ring buffer
+  (fixture-1-1
+   (lambda ()
+     (let ((new-buf (generate-new-buffer bfr-test-name-prefix)))
+       (unwind-protect
+           (with-current-buffer new-buf
+             (should (funcall sut))
+             (should (eq (current-buffer) buffer)))
+         (kill-buffer new-buf)))))
+
+  (fixture-2-0-1
+   (lambda ()
+     (let ((new-buf (generate-new-buffer bfr-test-name-prefix)))
+       (unwind-protect
+           (with-current-buffer new-buf
+             (buffer-ring-add bfr-0-ring-name)
+             (bfr-torus-switch-to-ring bfr-0-ring-name)
+             (should (funcall sut))
+             (should (eq (current-buffer) buffer)))
+         (kill-buffer new-buf)))))
+
+  ;; if buffer is present in the new ring but not at head,
+  ;; remain on it in the new ring
+  (fixture-2-1-1
+   ;; buffer is on both rings
+   (lambda ()
+     (let ((new-buf (generate-new-buffer bfr-test-name-prefix)))
+       (unwind-protect
+           (with-current-buffer new-buf
+             (buffer-ring-add bfr-0-ring-name)
+             (bfr-torus-switch-to-ring bfr-0-ring-name)
+             ;; go to a buffer not on ring 1
+             (dyn-ring-rotate-until (bfr-ring-ring (bfr-current-ring))
+                                    #'dyn-ring-rotate-right
+                                    (lambda (bfr)
+                                      (not (eq buffer bfr))))
+             ;; buffer is the only buffer in ring 1
+             ;; so it should become current
+             (bfr-torus-switch-to-ring bfr-1-ring-name)
+             ;; now switching back would a priori return to the head,
+             ;; which isn't buffer. But since buffer is present in
+             ;; the destination ring, it should remain current
+             (should (funcall sut))
+             (should (eq (current-buffer) buffer)))
+         (kill-buffer new-buf)))))
+
+  ;; does not rotate if all other rings are empty
+  (fixture-3-0-1-0
+   (lambda ()
+     (bfr-torus-switch-to-ring bfr-1-ring-name)
+     (with-current-buffer buf1
+       (should-not (funcall sut))
+       (should (eq (current-buffer) buf1))
+       (should (eq bring1 (bfr-current-ring))))))
+
+  ;; rotation with an empty ring
+  (fixture-3-0-1-1
+   (lambda ()
+     (bfr-torus-switch-to-ring bfr-1-ring-name)
+     (with-current-buffer buf1
+       (should (funcall sut))
+       (should (eq (current-buffer) buf2))
+       (should (eq bring2 (bfr-current-ring))))))
+  (fixture-3-0-1-1
+   (lambda ()
+     (bfr-torus-switch-to-ring bfr-2-ring-name)
+     (with-current-buffer buf2
+       (should (funcall sut))
+       (should (eq (current-buffer) buf1))
+       (should (eq bring1 (bfr-current-ring))))))
+
+  ;; simple rotation with a 3-ring
+  (fixture-3-1-1-1
+   (lambda ()
+     ;; current ring is 2
+     ;; current buffer is buf2
+     (with-current-buffer buf2
+       (should (funcall sut))
+       (should (eq (current-buffer) buf3))
+       (should (eq bring0 (bfr-current-ring))))))
+  (fixture-3-1-1-1
+   (lambda ()
+     (with-current-buffer buf2
+       (should (progn (funcall sut)
+                      (funcall sut)))
+       (should (eq (current-buffer) buf1))
+       (should (eq bring1 (bfr-current-ring))))))
+  (fixture-3-1-1-1
+   (lambda ()
+     (with-current-buffer buf2
+       (should (progn (funcall sut)
+                      (funcall sut)
+                      (funcall sut)))
+       (should (eq (current-buffer) buf2))
+       (should (eq bring2 (bfr-current-ring))))))
 
   ;; rotation with same buffer in multiple rings
   (fixture-3-0-1-3
