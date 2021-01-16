@@ -288,6 +288,18 @@
      (buffer-torus-next-ring)
      (should (eq bring2 (bfr-current-ring))))))
 
+(ert-deftest buffer-torus-delete-ring-test ()
+  (fixture-2-1-1
+   (lambda ()
+     (should (buffer-torus-delete-ring))
+     (should (= 1 (dyn-ring-size buffer-ring-torus)))))
+
+  ;; changes ring if current one is deleted
+  (fixture-2-1-1
+   (lambda ()
+     (should (buffer-torus-delete-ring))
+     (should (eq bring0 (bfr-current-ring))))))
+
 (ert-deftest buffer-ring-add-test ()
   (fixture-0
    (lambda ()
