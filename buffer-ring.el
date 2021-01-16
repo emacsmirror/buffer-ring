@@ -28,7 +28,6 @@
 
 ;;; Code:
 
-;; TODO: set the switch to buffer advice properly
 (defconst buffer-ring-version "0.1.1" "buffer-ring version")
 (require 'dynamic-ring)
 (require 's)
@@ -60,12 +59,16 @@
 (defun buffer-ring-initialize ()
   "Set up any hooks needed for buffer rings."
   (interactive)
-  (advice-add 'switch-to-buffer
-              :around #'buffer-ring-set-buffer-context)
   ;; TODO: if we want to add all buffers to a "primary"
   ;; ring, we should also hook into buffer-list-changed-hook
   ;; or maybe find-file-hook in addition here
-  )
+  (advice-add 'switch-to-buffer
+              :after #'buffer-ring-set-buffer-context))
+
+(defun buffer-ring-disable ()
+  "Remove hooks, etc."
+  (interactive)
+  (advice-remove 'switch-to-buffer #'buffer-ring-set-buffer-context))
 
 ;;
 ;;  buffer ring structure
@@ -234,7 +237,7 @@ to the koala buffer."
   (interactive)
   (bfr-ring--rotate #'dyn-ring-rotate-right))
 
-(defun buffer-ring-set-buffer-context ()
+(defun buffer-ring-set-buffer-context (&rest args)
   "If a buffer is visited directly without rotating
    to it, it should modify the ring structure so that
    recency is accounted for correctly."

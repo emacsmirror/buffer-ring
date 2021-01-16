@@ -526,7 +526,7 @@
        (should (funcall sut))
        (should (eq (current-buffer) buffer)))))
 
-  ;; when abroad, rotating the ring changes to a ring buffer
+  ;; when abroad, rotating the ring changes to a native buffer
   (fixture-1-1
    (lambda ()
      (let ((new-buf (generate-new-buffer bfr-test-name-prefix)))
@@ -638,7 +638,7 @@
        (should (funcall sut))
        (should (eq (current-buffer) buffer)))))
 
-  ;; when abroad, rotating the torus changes to a ring buffer
+  ;; when abroad, rotating the torus changes to a native buffer
   (fixture-1-1
    (lambda ()
      (let ((new-buf (generate-new-buffer bfr-test-name-prefix)))
@@ -770,7 +770,7 @@
        (should (funcall sut))
        (should (eq (current-buffer) buffer)))))
 
-  ;; when abroad, rotating the torus changes to a ring buffer
+  ;; when abroad, rotating the torus changes to a native buffer
   (fixture-1-1
    (lambda ()
      (let ((new-buf (generate-new-buffer bfr-test-name-prefix)))
@@ -970,3 +970,46 @@
        (buffer-ring-set-buffer-context)
        (should (eq bring1 (bfr-current-ring)))
        (should (eq buf1 (bfr-ring-current-buffer)))))))
+
+(ert-deftest buffer-ring-surface-ring-test ()
+  (fixture-3-0-1-3
+   (lambda ()
+     (buffer-ring-surface-ring bring1)
+     (should (eq bring1 (car (bfr-get-rings buf1))))))
+  (fixture-3-0-1-3
+   (lambda ()
+     (buffer-ring-surface-ring bring1)
+     (dolist (buf (list buf1 buf2 buf3))
+       (bfr-register-ring buf bring1))
+     (buffer-ring-surface-ring bring2)
+     (should (eq bring2 (car (bfr-get-rings buf1))))
+     (should (eq bring2 (car (bfr-get-rings buf2))))
+     (should (eq bring2 (car (bfr-get-rings buf3)))))))
+
+;;
+;; "Integration" tests
+;;
+
+(ert-deftest buffer-ring-switching-buffers-and-rings-test ()
+  (fixture-3-0-1-3
+   (lambda ()
+     (let ((bring3 (bfr-torus-get-ring "new-ring"))
+           (new-buf (generate-new-buffer bfr-test-name-prefix)))
+       (unwind-protect
+           (with-current-buffer new-buf
+             (buffer-ring-add "new-ring" new-buf)
+             ;; switch to buf2 in bring2 so it's at head
+             (switch-to-buffer buf2)
+             ;; switch to bring1, buf1 now points to bring1
+             (bfr-torus-switch-to-ring bfr-1-ring-name)
+             (should (eq bring1 (car (bfr-get-rings buf1))))
+             ;; then switch to the new buffer in bring3
+             (switch-to-buffer new-buf)
+             (should (eq bring3 (bfr-current-ring)))
+             ;; then switch to bring2 which should set buffer to buf2
+             (bfr-torus-switch-to-ring bfr-2-ring-name)
+             (should (eq buf2 (current-buffer)))
+             ;; ensure that buf1 (not active but in ring) points to bring2
+             (should (eq bring2 (car (bfr-get-rings buf1)))))
+         (kill-buffer new-buf)
+         (dyn-ring-destroy (bfr-ring-ring bring3)))))))
