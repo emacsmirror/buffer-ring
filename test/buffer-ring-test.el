@@ -1,3 +1,5 @@
+;; Note: we want to retain dynamic binding for these tests because the
+;; ERT "fixtures" rely on it.
 
 ;; Add source paths to load path so the tests can find the source files
 ;; Adapted from:
@@ -933,3 +935,38 @@
    (lambda ()
      (kill-buffer buffer)
      (should (= 2 (dyn-ring-size (bfr-ring-ring bring2)))))))
+
+(ert-deftest buffer-ring-set-buffer-context-test ()
+  ;; if buffer is unaffiliated, nothing happens
+  (fixture-2-0-1
+   (lambda ()
+     (let ((new-buf (generate-new-buffer bfr-test-name-prefix)))
+       (unwind-protect
+           (with-current-buffer new-buf
+             (buffer-ring-set-buffer-context)
+             (should (eq bring1 (bfr-current-ring))))
+         (kill-buffer new-buf)))))
+
+  ;; if buffer is in current ring and already at head, nothing happens
+  (fixture-3-0-1-3
+   (lambda ()
+     (with-current-buffer buffer
+       (buffer-ring-set-buffer-context)
+       (should (eq bring2 (bfr-current-ring)))
+       (should (eq buffer (bfr-ring-current-buffer))))))
+
+  ;; if buffer is in current ring and not at head, it is reinserted
+  (fixture-3-0-1-3
+   (lambda ()
+     (with-current-buffer buf3
+       (buffer-ring-set-buffer-context)
+       (should (eq bring2 (bfr-current-ring)))
+       (should (eq buf3 (bfr-ring-current-buffer))))))
+
+  ;; if buffer is in a different ring, current ring is changed
+  (fixture-3-0-1-2
+   (lambda ()
+     (with-current-buffer buf1
+       (buffer-ring-set-buffer-context)
+       (should (eq bring1 (bfr-current-ring)))
+       (should (eq buf1 (bfr-ring-current-buffer)))))))

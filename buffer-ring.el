@@ -60,7 +60,7 @@
   "Set up any hooks needed for buffer rings."
   (interactive)
   (advice-add 'switch-to-buffer
-              :around #'buffer-ring-jump-to-buffer)
+              :around #'buffer-ring-set-buffer-context)
   ;; TODO: if we want to add all buffers to a "primary"
   ;; ring, we should also hook into buffer-list-changed-hook
   ;; or maybe find-file-hook in addition here
@@ -228,26 +228,22 @@ to the koala buffer."
   (interactive)
   (bfr-ring--rotate #'dyn-ring-rotate-right))
 
-(defun bfr-ring-jump-to-buffer ()
+(defun buffer-ring-set-buffer-context ()
   "If a buffer is visited directly without rotating
    to it, it should modify the ring structure so that
    recency is accounted for correctly."
-  ;; if ∈ current ring, break-and-insert
-  ;; elif ∈ some ring R, switch to one of them
-  ;;   this should itself be a ring of rings, but just
-  ;;   use a list for now
-  ;; else do nothing - we retain our position in the
-  ;; active buffer ring, and any buffer-ring operations
-  ;; would assume the current buffer doesn't even exist
-  ;; or rather, would assume that we are currently at head
   (let* ((buffer (current-buffer))
-         (bfr-rings (bfr-get-rings buffer))
-         (ring (bfr-ring-ring (bfr-current-ring))))
-    (cond ((dyn-ring-contains-p ring buffer)
-           (dyn-ring-break-insert ring buffer))
-          (bfr-rings
-           (bfr-torus-switch-to-ring
-            (bfr-ring-name (car bfr-rings)))))))
+         (bfr-rings (bfr-get-rings buffer)))
+    (when bfr-rings
+      (let ((ring (bfr-ring-ring (bfr-current-ring))))
+        (if (dyn-ring-contains-p ring buffer)
+            ;; if it is already at the head, we don't
+            ;; need to do anything, and we probably arrived
+            ;; here via a buffer-ring interface
+            (unless (eq buffer (dyn-ring-value ring))
+              (dyn-ring-break-insert ring buffer))
+          (bfr-torus-switch-to-ring
+           (bfr-ring-name (car bfr-rings))))))))
 
 ;;
 ;; buffer torus interface
@@ -303,9 +299,10 @@ to the koala buffer."
 (defun bfr-current-ring-name ()
   (bfr-ring-name (bfr-current-ring)))
 
-(defun bfr-ring-current-buffer (bfr-ring)
+(defun bfr-ring-current-buffer (&optional bfr-ring)
   "Current buffer in BFR-RING."
-  (dyn-ring-value (bfr-ring-ring bfr-ring)))
+  (let ((bfr-ring (or bfr-ring (bfr-current-ring))))
+    (dyn-ring-value (bfr-ring-ring bfr-ring))))
 
 (defun bfr-torus--rotate (direction)
   (let ((buffer (current-buffer))
