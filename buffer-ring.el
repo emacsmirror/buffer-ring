@@ -62,6 +62,8 @@
   ;; TODO: if we want to add all buffers to a "primary"
   ;; ring, we should also hook into buffer-list-changed-hook
   ;; or maybe find-file-hook in addition here
+  ;; TODO: should this be buffer-local? in that case it can
+  ;; be added at the time that the buffer is adding to a ring
   (advice-add 'switch-to-buffer
               :after #'buffer-ring-set-buffer-context))
 
@@ -292,7 +294,7 @@ ring recency is consistent across the board."
 
 (defun bfr-torus-switch-to-ring (name)
   "Switch to ring NAME."
-  (interactive)
+  (interactive "sSwitch to ring ? ")
   (let ((buffer (current-buffer))
         (segment (dyn-ring-find-forwards buffer-ring-torus
                                          (lambda (r)
