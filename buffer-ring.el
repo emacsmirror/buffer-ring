@@ -28,6 +28,7 @@
 
 ;;; Code:
 
+;; TODO: set the switch to buffer advice properly
 (defconst buffer-ring-version "0.1.1" "buffer-ring version")
 (require 'dynamic-ring)
 (require 's)
@@ -107,7 +108,11 @@
                             key))))))
 
 (defun bfr-delete-ring (buffer bfr-ring)
-  "Delete BFR-RING from the list of rings for BUFFER."
+  "Delete BFR-RING from the list of rings for BUFFER.
+
+This does NOT delete the buffer from the ring, only the ring
+identifier from the buffer. It should be called only as part
+of doing the former."
   (let ((key (buffer-name buffer)))
     (ht-set! buffer-rings
              key
@@ -182,6 +187,7 @@ to the koala buffer."
   (let ((buffer (current-buffer)))
     (save-excursion
       (dolist (bfr-ring (bfr-get-rings buffer))
+        ;; TODO: this may muddle torus recency
         (bfr-torus-switch-to-ring (bfr-ring-name bfr-ring))
         (buffer-ring-delete buffer)))
     (remove-hook 'kill-buffer-hook 'buffer-ring-drop-buffer t)))
@@ -245,6 +251,15 @@ to the koala buffer."
           (bfr-torus-switch-to-ring
            (bfr-ring-name (car bfr-rings))))))))
 
+(defun buffer-ring-surface-ring (&optional bfr-ring)
+  "Make BFR-RING the most recent ring in all member buffers.
+
+We'd want to do this each time the ring becomes current, so that
+ring recency is consistent across the board."
+  (let ((bfr-ring (or bfr-ring (bfr-current-ring))))
+    (dolist (buffer (dyn-ring-values (bfr-ring-ring bfr-ring)))
+      (bfr-register-ring buffer bfr-ring))))
+
 ;;
 ;; buffer torus interface
 ;;
@@ -281,17 +296,11 @@ to the koala buffer."
                                            (string= name
                                                     (bfr-ring-name r))))))
     (when segment
-      (let* ((bfr-ring (dyn-ring-segment-value segment))
-             (ring (bfr-ring-ring bfr-ring)))
+      (let ((bfr-ring (dyn-ring-segment-value segment)))
         ;; switch to ring and reinsert it at the head
         (dyn-ring-break-insert buffer-ring-torus
                                bfr-ring)
-        ;; if original buffer is in the new ring, stay there
-        ;; and reinsert it to account for recency
-        (when (dyn-ring-contains-p ring buffer)
-          (dyn-ring-break-insert ring buffer))
-        (switch-to-buffer
-         (bfr-ring-current-buffer bfr-ring))))))
+        (bfr-torus--switch-ring bfr-ring buffer)))))
 
 (defun bfr-current-ring ()
   (dyn-ring-value buffer-ring-torus))
@@ -303,6 +312,22 @@ to the koala buffer."
   "Current buffer in BFR-RING."
   (let ((bfr-ring (or bfr-ring (bfr-current-ring))))
     (dyn-ring-value (bfr-ring-ring bfr-ring))))
+
+(defun bfr-torus--switch-ring (bfr-ring buffer)
+  "Perform any actions in connection with switching to a new ring.
+
+BFR-RING is the new ring switched to, and BUFFER is the original buffer."
+  (let ((ring (bfr-ring-ring bfr-ring)))
+    ;; bring the buffer ring "to the surface" across all
+    ;; member buffers, as the most recent one
+    (buffer-ring-surface-ring bfr-ring)
+    ;; if original buffer is in the new ring, stay there
+    ;; and reinsert it to account for recency
+    (when (dyn-ring-contains-p ring buffer)
+      (dyn-ring-break-insert ring buffer))
+    (switch-to-buffer
+     (bfr-ring-current-buffer bfr-ring))))
+
 
 (defun bfr-torus--rotate (direction)
   (let ((buffer (current-buffer))
@@ -326,15 +351,9 @@ to the koala buffer."
                                                       bfr-ring))
                                              (not (dyn-ring-empty-p
                                                    (bfr-ring-ring bfr-ring))))))
-               (let ((ring-name (bfr-current-ring-name))
-                     (ring (bfr-ring-ring (bfr-current-ring))))
-                 (message "switching to ring %s" ring-name)
-                 ;; if the original buffer is present in the new ring,
-                 ;; remain there, accounting for recency in the new ring
-                 (when (dyn-ring-contains-p ring buffer)
-                   (dyn-ring-break-insert ring buffer))
-                 (switch-to-buffer
-                  (bfr-ring-current-buffer (bfr-current-ring))))
+               (progn
+                 (message "switching to ring %s" (bfr-current-ring-name))
+                 (bfr-torus--switch-ring (bfr-current-ring) buffer))
              (message "All of the buffer rings are empty. Keeping the current ring position")
              nil)))))
 
