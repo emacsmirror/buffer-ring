@@ -1,11 +1,12 @@
-;;; buffer-ring.el --- A torus for buffer navigation. A ring of buffers, and a ring of buffer rings. -*- lexical-binding: t -*-
+;;; buffer-ring.el --- Rings and tori for buffer navigation -*- lexical-binding: t -*-
 
 ;; Copyright (C) 2009 Mike Mattie
 ;; Author: Mike Mattie codermattie@gmail.com
 ;; Maintainer: Mike Mattie codermattie@gmail.com
+;; URL: https://github.com/countvajhula/buffer-ring
 ;; Created: 2009-4-16
 ;; Version: 0.1.0
-;; Package-Requires: ((dynamic-ring "0.0.2") (s "1.12.0"))
+;; Package-Requires: ((emacs "24.4") (dynamic-ring "0.0.2") (s "1.12.0"))
 
 ;; This file is NOT a part of Gnu Emacs.
 
@@ -25,6 +26,8 @@
 ;; along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 ;;; Commentary:
+
+;; Rings of buffers and tori of buffer rings.
 
 ;;; Code:
 
@@ -52,9 +55,6 @@
 
 (defvar buffer-ring-torus (make-dyn-ring)
   "a global ring of all the buffer rings. A torus I believe.")
-
-(defvar buffer-ring-default nil
-  "The default buffer ring")
 
 (defun buffer-ring-initialize ()
   "Set up any hooks needed for buffer rings."
@@ -285,7 +285,7 @@ ring recency is consistent across the board."
   "bfr-torus-get-ring NAME
 
    Find a existing buffer ring, or create a new buffer ring with name.
-   buffer-ring-default is updated. The buffer-ring is returned.
+   The buffer-ring is returned.
   "
   (let ((segment (dyn-ring-find-forwards buffer-ring-torus
                                          (lambda (r)
