@@ -62,8 +62,7 @@
 (defun fixture-1-1 (body2)
   (fixture-1-0
    (lambda ()
-     (buffer-ring-add (bfr-ring-name bring)
-                      buffer)
+     (bfr--add-buffer-to-ring buffer bring)
      (funcall body2))))
 
 (defun fixture-1-2 (body3)
@@ -73,8 +72,7 @@
        (unwind-protect
            (progn
              (setq buf2 (generate-new-buffer bfr-test-name-prefix))
-             (buffer-ring-add (bfr-ring-name bring)
-                              buf2)
+             (bfr--add-buffer-to-ring buf2 bring)
              (funcall body3))
          (kill-buffer buf2))))))
 
@@ -85,8 +83,7 @@
        (unwind-protect
            (progn
              (setq buf3 (generate-new-buffer bfr-test-name-prefix))
-             (buffer-ring-add (bfr-ring-name bring)
-                              buf3)
+             (bfr--add-buffer-to-ring buf3 bring)
              (funcall body4))
          (kill-buffer buf3))))))
 
@@ -102,8 +99,7 @@
           (setq bring0 (bfr-torus-get-ring bfr-0-ring-name)
                 bring1 (bfr-torus-get-ring bfr-1-ring-name)
                 buffer (generate-new-buffer bfr-test-name-prefix))
-          (buffer-ring-add (bfr-ring-name bring1)
-                           buffer)
+          (bfr--add-buffer-to-ring buffer bring1)
           (funcall body))
       (kill-buffer buffer)
       (dyn-ring-destroy buffer-ring-torus)
@@ -115,8 +111,7 @@
   ;; add a buffer to the empty ring
   (fixture-2-0-1
    (lambda ()
-     (buffer-ring-add (bfr-ring-name bring0)
-                      buffer)
+     (bfr--add-buffer-to-ring buffer bring0)
      (funcall body2))))
 
 (defun fixture-3-0-1-0 (body)
@@ -134,8 +129,7 @@
                 bring1 (bfr-torus-get-ring bfr-1-ring-name)
                 bring2 (bfr-torus-get-ring bfr-2-ring-name)
                 buf1 (generate-new-buffer bfr-test-name-prefix))
-          (buffer-ring-add (bfr-ring-name bring1)
-                           buf1)
+          (bfr--add-buffer-to-ring buf1 bring1)
           (funcall body))
       (kill-buffer buf1)
       (dyn-ring-destroy buffer-ring-torus)
@@ -152,8 +146,7 @@
        (unwind-protect
            (progn
              (setq buf2 (generate-new-buffer bfr-test-name-prefix))
-             (buffer-ring-add (bfr-ring-name bring2)
-                              buf2)
+             (bfr--add-buffer-to-ring buf2 bring2)
              (funcall body2))
          (kill-buffer buf2))))))
 
@@ -166,8 +159,7 @@
        (unwind-protect
            (progn
              (setq buf3 (generate-new-buffer bfr-test-name-prefix))
-             (buffer-ring-add (bfr-ring-name bring0)
-                              buf3)
+             (bfr--add-buffer-to-ring buf3 bring0)
              (funcall body3))
          (kill-buffer buf3))))))
 
@@ -180,8 +172,7 @@
        (unwind-protect
            (progn
              (setq buf3 (generate-new-buffer bfr-test-name-prefix))
-             (buffer-ring-add (bfr-ring-name bring2)
-                              buf3)
+             (bfr--add-buffer-to-ring buf3 bring2)
              (funcall body3))
          (kill-buffer buf3))))))
 
@@ -192,8 +183,7 @@
   (fixture-3-0-1-2
    (lambda ()
      (let ((buffer buf1))
-       (buffer-ring-add (bfr-ring-name bring0)
-                        buffer)
+       (bfr--add-buffer-to-ring buffer bring0)
        (funcall body4)))))
 
 (defun fixture-3-0-2-2 (body4)
@@ -203,8 +193,7 @@
   (fixture-3-0-1-2
    (lambda ()
      (let ((buffer buf2))
-       (buffer-ring-add (bfr-ring-name bring1)
-                        buffer)
+       (bfr--add-buffer-to-ring buffer bring1)
        (funcall body4)))))
 
 (defun fixture-3-0-1-3 (body4)
@@ -214,8 +203,7 @@
   (fixture-3-0-1-2
    (lambda ()
      (let ((buffer buf1))
-       (buffer-ring-add (bfr-ring-name bring2)
-                        buffer)
+       (bfr--add-buffer-to-ring buffer bring2)
        (funcall body4)))))
 
 ;;
@@ -261,7 +249,7 @@
      (let ((new-buf (generate-new-buffer bfr-test-name-prefix)))
        (unwind-protect
            (with-current-buffer new-buf
-             (buffer-ring-add bfr-0-ring-name)
+             (bfr--add-buffer-to-ring new-buf bring0)
              (bfr-torus-switch-to-ring bfr-0-ring-name)
              ;; go to a buffer not on ring 1
              (dyn-ring-rotate-until (bfr-ring-ring (bfr-current-ring))
@@ -449,7 +437,14 @@
   (fixture-3-0-1-3
    (lambda ()
      (should-not (buffer-ring-add (bfr-ring-name bring1)
-                                  buffer)))))
+                                  buffer))))
+
+  ;; should change to a ring when a buffer is added to it
+  (fixture-3-0-1-3
+   (lambda ()
+     (buffer-ring-add (bfr-ring-name bring0)
+                      buffer)
+     (should (eq bring0 (bfr-current-ring))))))
 
 (ert-deftest buffer-ring-delete-test ()
   (fixture-0
@@ -653,7 +648,7 @@
      (let ((new-buf (generate-new-buffer bfr-test-name-prefix)))
        (unwind-protect
            (with-current-buffer new-buf
-             (buffer-ring-add bfr-0-ring-name)
+             (bfr--add-buffer-to-ring new-buf bring0)
              (bfr-torus-switch-to-ring bfr-0-ring-name)
              (should (funcall sut))
              (should (eq (current-buffer) buffer)))
@@ -667,7 +662,7 @@
      (let ((new-buf (generate-new-buffer bfr-test-name-prefix)))
        (unwind-protect
            (with-current-buffer new-buf
-             (buffer-ring-add bfr-0-ring-name)
+             (bfr--add-buffer-to-ring new-buf bring0)
              (bfr-torus-switch-to-ring bfr-0-ring-name)
              ;; go to a buffer not on ring 1
              (dyn-ring-rotate-until (bfr-ring-ring (bfr-current-ring))
@@ -785,7 +780,7 @@
      (let ((new-buf (generate-new-buffer bfr-test-name-prefix)))
        (unwind-protect
            (with-current-buffer new-buf
-             (buffer-ring-add bfr-0-ring-name)
+             (bfr--add-buffer-to-ring new-buf bring0)
              (bfr-torus-switch-to-ring bfr-0-ring-name)
              (should (funcall sut))
              (should (eq (current-buffer) buffer)))
@@ -799,7 +794,7 @@
      (let ((new-buf (generate-new-buffer bfr-test-name-prefix)))
        (unwind-protect
            (with-current-buffer new-buf
-             (buffer-ring-add bfr-0-ring-name)
+             (bfr--add-buffer-to-ring new-buf bring0)
              (bfr-torus-switch-to-ring bfr-0-ring-name)
              ;; go to a buffer not on ring 1
              (dyn-ring-rotate-until (bfr-ring-ring (bfr-current-ring))
@@ -998,6 +993,7 @@
        (unwind-protect
            (with-current-buffer new-buf
              (buffer-ring-add "new-ring" new-buf)
+             (should (eq bring3 (bfr-current-ring)))
              ;; switch to buf2 in bring2 so it's at head
              (switch-to-buffer buf2)
              ;; switch to bring1, buf1 now points to bring1

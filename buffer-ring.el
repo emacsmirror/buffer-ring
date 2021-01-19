@@ -141,6 +141,14 @@ of doing the former."
         (dyn-ring-size ring)
       -1)))
 
+(defun bfr--add-buffer-to-ring (buffer bfr-ring)
+  "Add BUFFER to BFR-RING."
+  (let ((ring (bfr-ring-ring bfr-ring)))
+    (dyn-ring-insert ring buffer)
+    (bfr-register-ring buffer bfr-ring)
+    (with-current-buffer buffer
+      (add-hook 'kill-buffer-hook 'buffer-ring-drop-buffer t t))))
+
 (defun buffer-ring-add (ring-name &optional buffer)
   "buffer-ring-add RING-NAME BUFFER
 
@@ -156,10 +164,8 @@ of doing the former."
            (message "buffer %s is already in ring \"%s\"" (buffer-name)
                     ring-name)
            nil)
-          (t (dyn-ring-insert ring buffer)
-             (bfr-register-ring buffer bfr-ring)
-             (with-current-buffer buffer
-               (add-hook 'kill-buffer-hook 'buffer-ring-drop-buffer t t))
+          (t (bfr--add-buffer-to-ring buffer bfr-ring)
+             (bfr-torus-switch-to-ring ring-name)
              t))))
 
 (defun buffer-ring-delete (&optional buffer)
