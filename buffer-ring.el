@@ -1,7 +1,7 @@
 ;;; buffer-ring.el --- Rings and tori for buffer navigation -*- lexical-binding: t -*-
 
-;; Copyright (C) 2009 Mike Mattie
-;; Author: Mike Mattie codermattie@gmail.com
+;; Author: Mike Mattie <codermattie@gmail.com>
+;;         Sid Kasivajhula <sid@countvajhula.com>
 ;; Maintainer: Mike Mattie codermattie@gmail.com
 ;; URL: https://github.com/countvajhula/buffer-ring
 ;; Created: 2009-4-16
@@ -258,6 +258,8 @@ to the koala buffer."
             ;; need to do anything, and we probably arrived
             ;; here via a buffer-ring interface
             (unless (eq buffer (dyn-ring-value ring))
+              ;; TODO: should we reinsert the buffer
+              ;; in all of its associated rings?
               (dyn-ring-break-insert ring buffer))
           (bfr-torus-switch-to-ring
            (bfr-ring-name (car bfr-rings))))))))
