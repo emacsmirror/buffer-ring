@@ -988,6 +988,7 @@
 (ert-deftest buffer-ring-switching-buffers-and-rings-test ()
   (fixture-3-0-1-3
    (lambda ()
+     (buffer-ring-initialize)
      (let ((bring3 (bfr-torus-get-ring "new-ring"))
            (new-buf (generate-new-buffer bfr-test-name-prefix)))
        (unwind-protect
@@ -1008,4 +1009,5 @@
              ;; ensure that buf1 (not active but in ring) points to bring2
              (should (eq bring2 (car (bfr-get-rings buf1)))))
          (kill-buffer new-buf)
-         (dyn-ring-destroy (bfr-ring-ring bring3)))))))
+         (dyn-ring-destroy (bfr-ring-ring bring3))))
+     (buffer-ring-disable))))
