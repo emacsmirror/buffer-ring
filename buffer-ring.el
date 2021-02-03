@@ -41,6 +41,7 @@
 
 (global-set-key (kbd "C-c C-b l") 'buffer-ring-list-buffers)
 (global-set-key (kbd "C-c C-b r") 'buffer-ring-torus-list-rings)
+(global-set-key (kbd "C-c C-b w") 'buffer-ring-show-name)
 
 (global-set-key (kbd "C-c C-b a") 'buffer-ring-add)
 (global-set-key (kbd "C-c C-b d") 'buffer-ring-delete)
@@ -321,6 +322,11 @@ ring recency is consistent across the board."
 
 (defun buffer-ring-current-ring-name ()
   (buffer-ring-ring-name (buffer-ring-current-ring)))
+
+(defun buffer-ring-show-name ()
+  "Display name of current ring."
+  (interactive)
+  (message (buffer-ring-current-ring-name)))
 
 (defun buffer-ring-current-buffer (&optional bfr-ring)
   "Current buffer in BFR-RING."
