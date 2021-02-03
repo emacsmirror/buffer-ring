@@ -285,20 +285,26 @@ ring recency is consistent across the board."
     (dyn-ring-insert buffer-ring-torus bfr-ring)
     bfr-ring))
 
+(defun buffer-ring-torus--find-ring (name)
+  "Find a ring with name NAME."
+  (let ((segment (dyn-ring-find-forwards buffer-ring-torus
+                                         (lambda (r)
+                                           (string= name
+                                                    (buffer-ring-ring-name r))))))
+    (when segment
+      (dyn-ring-segment-value segment))))
+
 (defun buffer-ring-torus-get-ring (name)
   "buffer-ring-torus-get-ring NAME
 
    Find a existing buffer ring, or create a new buffer ring with name.
    The buffer-ring is returned.
   "
-  (let ((segment (dyn-ring-find-forwards buffer-ring-torus
-                                         (lambda (r)
-                                           (string= name
-                                                    (buffer-ring-ring-name r))))))
-    (if segment
+  (let ((found-ring (buffer-ring-torus--find-ring name)))
+    (if found-ring
         (progn
           (message "Found existing ring: %s" name)
-          (dyn-ring-segment-value segment))
+          found-ring)
       (message "Creating a new ring \"%s\"" name)
       (buffer-ring-torus--create-ring name))))
 
@@ -399,20 +405,31 @@ BFR-RING is the new ring switched to, and BUFFER is the original buffer."
    List the buffer rings in the buffer torus.
   "
   (interactive)
-  (message "buffer rings: %s"
-           (s-join ", " (dyn-ring-traverse-collect buffer-ring-torus
-                                                   #'buffer-ring-ring-name))))
+  (let ((rings (dyn-ring-traverse-collect buffer-ring-torus
+                                          #'buffer-ring-ring-name)))
+    (if rings
+        (message "Buffer rings: %s" (s-join ", " rings))
+      (message "No buffer rings."))))
 
-(defun buffer-ring-torus-delete-ring ()
-  "buffer-ring-torus-delete-ring
+(defun buffer-ring-torus-delete-ring (ring-name)
+  "buffer-ring-torus-delete-ring RING-NAME
 
    Delete the entire current buffer-ring.
   "
-  (interactive)
-  (let ((bfr-ring (buffer-ring-current-ring)))
-    (dyn-ring-delete buffer-ring-torus
-                     bfr-ring)
-    (dyn-ring-destroy (buffer-ring-ring-ring bfr-ring))))
+  (interactive
+   (list
+    (read-string (format "Delete which ring [default: %s]? "
+                         (buffer-ring-current-ring-name))
+                 nil
+                 nil
+                 (buffer-ring-current-ring-name))))
+  (message "ring name is %s" ring-name)
+  (let ((bfr-ring (buffer-ring-torus--find-ring ring-name)))
+    (if bfr-ring
+        (progn (dyn-ring-delete buffer-ring-torus bfr-ring)
+               (message "Ring %s deleted." ring-name))
+      (dyn-ring-destroy (buffer-ring-ring-ring bfr-ring))
+      (message "No such ring."))))
 
 (provide 'buffer-ring)
 ;;; buffer-ring.el ends here
