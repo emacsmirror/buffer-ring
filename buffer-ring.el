@@ -39,7 +39,7 @@
 ;; default keymap
 ;;
 
-(global-set-key (kbd "C-c C-b b") 'buffer-ring-list-buffers)
+(global-set-key (kbd "C-c C-b l") 'buffer-ring-list-buffers)
 (global-set-key (kbd "C-c C-b r") 'buffer-ring-torus-list-rings)
 
 (global-set-key (kbd "C-c C-b a") 'buffer-ring-add)
