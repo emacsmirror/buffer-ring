@@ -158,7 +158,14 @@ of doing the former."
    to add the buffer to, and assumes the current buffer
    if none is provided.
   "
-  (interactive "sAdd to ring ? ")
+  (interactive
+   (list
+    (let ((default-name (or (buffer-ring-current-ring-name)
+                            "default")))
+      (read-string (format "Add to which ring [%s]? " default-name)
+                   nil
+                   nil
+                   default-name))))
   (let* ((bfr-ring (buffer-ring-torus-get-ring ring-name))
          (ring (buffer-ring-ring-ring bfr-ring))
          (buffer (or buffer (current-buffer))))
