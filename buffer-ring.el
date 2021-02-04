@@ -117,14 +117,22 @@
   "Delete BFR-RING from the list of rings for BUFFER.
 
 This does NOT delete the buffer from the ring, only the ring
-identifier from the buffer. It should be called only as part
-of doing the former."
+identifier from the buffer. It should only be called either
+as part of doing the former or when deleting the ring entirely."
   (let ((key (buffer-name buffer)))
     (ht-set! buffer-rings
              key
              (remq bfr-ring
                    (ht-get buffer-rings
                            key)))))
+
+(defun buffer-ring-registry-drop-ring (bfr-ring)
+  "Drop BFR-RING from the registry of rings.
+
+This should only be called when deleting the ring entirely."
+  (let ((buffers (dyn-ring-values (buffer-ring-ring-ring bfr-ring))))
+    (dolist (buf buffers)
+      (buffer-ring-registry-delete-ring buf bfr-ring))))
 
 ;;
 ;; buffer ring interface
@@ -433,7 +441,8 @@ BFR-RING is the new ring switched to, and BUFFER is the original buffer."
   (message "ring name is %s" ring-name)
   (let ((bfr-ring (buffer-ring-torus--find-ring ring-name)))
     (if bfr-ring
-        (progn (dyn-ring-delete buffer-ring-torus bfr-ring)
+        (progn (buffer-ring-registry-drop-ring bfr-ring)
+               (dyn-ring-delete buffer-ring-torus bfr-ring)
                (message "Ring %s deleted." ring-name))
       (dyn-ring-destroy (buffer-ring-ring-ring bfr-ring))
       (message "No such ring."))))
