@@ -35,6 +35,8 @@
 (require 'dynamic-ring)
 (require 's)
 
+(defconst buffer-ring-default-ring-name "default")
+
 ;;
 ;; default keymap
 ;;
@@ -169,7 +171,7 @@ This should only be called when deleting the ring entirely."
   (interactive
    (list
     (let ((default-name (or (buffer-ring-current-ring-name)
-                            "default")))
+                            buffer-ring-default-ring-name)))
       (read-string (format "Add to which ring [%s]? " default-name)
                    nil
                    nil
