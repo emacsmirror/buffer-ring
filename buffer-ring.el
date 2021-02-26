@@ -121,7 +121,7 @@
 This does NOT delete the buffer from the ring, only the ring
 identifier from the buffer. It should only be called either
 as part of doing the former or when deleting the ring entirely."
-  (let ((key (buffer-name buffer)))
+  (let ((key (buffer-ring-registry-get-key buffer)))
     (ht-set! buffer-rings
              key
              (remq bfr-ring
@@ -220,6 +220,8 @@ to the koala buffer."
         ;; TODO: this may muddle torus recency
         (buffer-ring-torus-switch-to-ring (buffer-ring-ring-name bfr-ring))
         (buffer-ring-delete buffer)))
+    ;; remove the buffer from the buffer ring registry
+    (ht-remove! buffer-rings (buffer-ring-registry-get-key buffer))
     (remove-hook 'kill-buffer-hook 'buffer-ring-drop-buffer t)))
 
 (defun buffer-ring-list-buffers ()
