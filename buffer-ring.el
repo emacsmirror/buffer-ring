@@ -430,7 +430,7 @@ BFR-RING is the new ring switched to, and BUFFER is the original buffer."
         (message "Buffer rings: %s" (s-join ", " rings))
       (message "No buffer rings."))))
 
-(defun buffer-ring-torus-delete-ring (ring-name)
+(defun buffer-ring-torus-delete-ring (&optional ring-name)
   "buffer-ring-torus-delete-ring RING-NAME
 
    Delete the entire current buffer-ring.
@@ -442,8 +442,9 @@ BFR-RING is the new ring switched to, and BUFFER is the original buffer."
                  nil
                  nil
                  (buffer-ring-current-ring-name))))
-  (message "ring name is %s" ring-name)
-  (let ((bfr-ring (buffer-ring-torus--find-ring ring-name)))
+  (let* ((ring-name (or ring-name (buffer-ring-current-ring-name)))
+         (bfr-ring (buffer-ring-torus--find-ring ring-name)))
+    (message "ring name is %s" ring-name)
     (if bfr-ring
         (progn (buffer-ring-registry-drop-ring bfr-ring)
                (dyn-ring-delete buffer-ring-torus bfr-ring)
