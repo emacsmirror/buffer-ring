@@ -182,6 +182,8 @@ This should only be called when deleting the ring entirely."
     (cond ((dyn-ring-contains-p ring buffer)
            (message "buffer %s is already in ring \"%s\"" (buffer-name)
                     ring-name)
+           ;; switch to the ring, all the same, for consistency
+           (buffer-ring-torus-switch-to-ring ring-name)
            nil)
           (t (buffer-ring--add-buffer-to-ring buffer bfr-ring)
              (buffer-ring-torus-switch-to-ring ring-name)

@@ -360,6 +360,14 @@
    (lambda ()
      (should-not (buffer-ring-add (buffer-ring-ring-name bring1)
                                   buffer))))
+  (fixture-2-1-1
+   (lambda ()
+     ;; current ring is bring1 - the buffer is already present
+     ;; on both bring0 and bring1. we add it to bring0.
+     ;; it should fail to add, yet, it should switch to bring0
+     ;; as the active ring
+     (buffer-ring-add (buffer-ring-ring-name bring0) buffer)
+     (should (eq (buffer-ring-current-ring) bring0))))
 
   (fixture-3-1-1-2
    (lambda ()
