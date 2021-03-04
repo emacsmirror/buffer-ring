@@ -80,18 +80,26 @@
 ;;
 
 (defun buffer-ring-make-ring (name)
+  "Construct a buffer ring with the name NAME.
+
+A buffer ring is simply a labeled dynamic ring data structure
+whose members are expected to be buffers."
   (cons name (make-dyn-ring)))
 
 (defun buffer-ring-ring-name (buffer-ring)
+  "An accessor to get the name of a buffer ring."
   (car buffer-ring))
 
 (defun buffer-ring-ring-ring (buffer-ring)
+  "... Hello?
+
+An accessor for the dynamic ring component of the buffer ring."
   (cdr buffer-ring))
 
 ;;
 ;; buffer rings registry
 ;;
-;; TODO: consider buffer local variables
+;; TODO: use buffer local variables instead?
 (defvar buffer-rings
   (ht)
   "Buffer to rings hash.")
@@ -241,8 +249,11 @@ to the koala buffer."
             (message "Buffer ring is empty.")))
       (message "No active buffer ring."))) )
 
-;; TODO: standardize interface names
 (defun buffer-ring--rotate (direction)
+  "Rotate the buffer ring.
+
+DIRECTION must be a function, either `dyn-ring-rotate-left` (to rotate
+left) or `dyn-ring-rotate-right` (to rotate right)."
   (let ((bfr-ring (buffer-ring-current-ring)))
     (when bfr-ring
       (let ((ring (buffer-ring-ring-ring bfr-ring)))
@@ -345,9 +356,11 @@ ring recency is consistent across the board."
         (buffer-ring-torus--switch-ring bfr-ring buffer)))))
 
 (defun buffer-ring-current-ring ()
+  "Get the current (active) buffer ring."
   (dyn-ring-value buffer-ring-torus))
 
 (defun buffer-ring-current-ring-name ()
+  "Get the name of the current buffer ring."
   (buffer-ring-ring-name (buffer-ring-current-ring)))
 
 (defun buffer-ring-show-name ()
@@ -377,6 +390,10 @@ BFR-RING is the new ring switched to, and BUFFER is the original buffer."
 
 
 (defun buffer-ring-torus--rotate (direction)
+  "Rotate the buffer ring torus.
+
+DIRECTION must be a function, either `dyn-ring-rotate-left` (to rotate
+left) or `dyn-ring-rotate-right` (to rotate right)."
   (let ((buffer (current-buffer))
         (initial-bfr-ring (buffer-ring-current-ring)))
     (cond ((dyn-ring-empty-p buffer-ring-torus)
