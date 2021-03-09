@@ -17,19 +17,25 @@ Build steps
 
   make checkdoc
 
-3. Install any new dependencies
+3. Run tests
+
+.. code-block:: bash
+
+  make test
+
+4. Install any new dependencies
 
 .. code-block:: bash
 
   make install
 
-4. Byte compile
+5. Byte compile
 
 .. code-block:: bash
 
   make build
 
-5. Test in MELPA sandbox
+6. Test in MELPA sandbox
 
 .. code-block:: bash
 
@@ -38,7 +44,7 @@ Build steps
   make recipes/buffer-ring
   make sandbox INSTALL=buffer-ring
 
-6. For a new release, you can check that MELPA stable finds it
+7. For a new release, you can check that MELPA stable finds it
 
 .. code-block:: bash
 
