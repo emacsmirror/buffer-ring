@@ -15,6 +15,7 @@
 
 ;;
 
+(require 'dynamic-ring)
 (require 'buffer-ring)
 
 ;;
