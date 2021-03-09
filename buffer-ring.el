@@ -6,7 +6,7 @@
 ;; URL: https://github.com/countvajhula/buffer-ring
 ;; Created: 2009-4-16
 ;; Version: 0.1.0
-;; Package-Requires: ((emacs "24.4") (dynamic-ring "0.0.2") (s "1.12.0"))
+;; Package-Requires: ((emacs "24.4") (dynamic-ring "0.0.2") (s "1.12.0") (ht "2.0"))
 
 ;; This file is NOT a part of Gnu Emacs.
 
@@ -34,6 +34,7 @@
 (defconst buffer-ring-version "0.1.1")
 (require 'dynamic-ring)
 (require 's)
+(require 'ht)
 
 (defconst buffer-ring-default-ring-name "default")
 

@@ -17,6 +17,7 @@
 
 (require 'dynamic-ring)
 (require 'buffer-ring)
+(require 'ht)
 
 ;;
 ;; Fixtures
