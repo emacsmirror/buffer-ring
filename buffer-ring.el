@@ -31,7 +31,7 @@
 
 ;;; Code:
 
-(defconst buffer-ring-version "0.1.1" "buffer-ring version")
+(defconst buffer-ring-version "0.1.1")
 (require 'dynamic-ring)
 (require 's)
 
@@ -57,13 +57,13 @@
 (global-set-key (kbd "C-c C-b e") 'buffer-ring-torus-delete-ring)
 
 (defvar buffer-ring-torus (make-dyn-ring)
-  "a global ring of all the buffer rings. A torus I believe.")
+  "A global ring of all the buffer rings.  A torus I believe.")
 
 (defun buffer-ring-initialize ()
   "Set up any hooks needed for buffer rings."
   (interactive)
-  ;; TODO: if we want to add all buffers to a "primary"
-  ;; ring, we should also hook into buffer-list-changed-hook
+  ;; TODO: if we want to automatically maintain a "primary"
+  ;; ring, we may also need to hook into buffer-list-changed-hook
   ;; or maybe find-file-hook in addition here
   ;; TODO: should this be buffer-local? in that case it can
   ;; be added at the time that the buffer is adding to a ring
@@ -87,13 +87,13 @@ whose members are expected to be buffers."
   (cons name (make-dyn-ring)))
 
 (defun buffer-ring-ring-name (buffer-ring)
-  "An accessor to get the name of a buffer ring."
+  "An accessor to get the name of a BUFFER-RING."
   (car buffer-ring))
 
 (defun buffer-ring-ring-ring (buffer-ring)
   "... Hello?
 
-An accessor for the dynamic ring component of the buffer ring."
+An accessor for the dynamic ring component of the BUFFER-RING."
   (cdr buffer-ring))
 
 ;;
@@ -127,7 +127,7 @@ An accessor for the dynamic ring component of the buffer ring."
   "Delete BFR-RING from the list of rings for BUFFER.
 
 This does NOT delete the buffer from the ring, only the ring
-identifier from the buffer. It should only be called either
+identifier from the buffer.  It should only be called either
 as part of doing the former or when deleting the ring entirely."
   (let ((key (buffer-ring-registry-get-key buffer)))
     (ht-set! buffer-rings
@@ -149,12 +149,11 @@ This should only be called when deleting the ring entirely."
 ;;
 
 (defun buffer-ring-size (&optional bfr-ring)
-  "buffer-ring-size BFR-RING
+  "Return the number of buffers in BFR-RING.
 
-   Returns the number of buffers in the current ring.
-   If there is no active buffer ring, it returns -1 so that
-   you can always use a numeric operator.
-  "
+If no buffer ring is specified, this defaults to the current ring.  If
+there is no active buffer ring, it returns -1 so that you can always
+use a numeric operator."
   (let* ((bfr-ring (or bfr-ring (buffer-ring-current-ring)))
          (ring (buffer-ring-ring-ring bfr-ring)))
     (if ring
@@ -170,12 +169,10 @@ This should only be called when deleting the ring entirely."
       (add-hook 'kill-buffer-hook 'buffer-ring-drop-buffer t t))))
 
 (defun buffer-ring-add (ring-name &optional buffer)
-  "buffer-ring-add RING-NAME BUFFER
+  "Add the BUFFER to the ring with name RING-NAME.
 
-   Add the buffer to a ring. It will prompt for the ring
-   to add the buffer to, and assumes the current buffer
-   if none is provided.
-  "
+It will prompt for the ring to add the buffer to.  If no BUFFER
+is provided it assumes the current buffer."
   (interactive
    (list
     (let ((default-name (or (buffer-ring-current-ring-name)
@@ -198,11 +195,11 @@ This should only be called when deleting the ring entirely."
              t))))
 
 (defun buffer-ring-delete (&optional buffer)
-  "buffer-ring-delete
+  "Delete BUFFER from the current ring.
 
-   Delete the current buffer from the current ring.
-   This modifies the ring, it does not kill the buffer.
-  "
+If no buffer is specified, it assumes the current buffer.
+
+This modifies the ring, it does not kill the buffer."
   (interactive)
   (let ((buffer (or buffer (current-buffer))))
     (if (buffer-ring-current-ring)
@@ -235,10 +232,7 @@ to the koala buffer."
     (remove-hook 'kill-buffer-hook 'buffer-ring-drop-buffer t)))
 
 (defun buffer-ring-list-buffers ()
-  "buffer-ring-list-buffers
-
-   List the buffers in the current buffer ring.
-  "
+  "List the buffers in the current buffer ring."
   (interactive)
   (let* ((bfr-ring (buffer-ring-current-ring))
          (ring (buffer-ring-ring-ring bfr-ring)))
@@ -264,25 +258,23 @@ left) or `dyn-ring-rotate-right` (to rotate right)."
           (switch-to-buffer (dyn-ring-value ring)))))))
 
 (defun buffer-ring-prev-buffer ()
-  "buffer-ring-prev-buffer
-
-   Switch to the previous buffer in the buffer ring.
-  "
+  "Switch to the previous buffer in the buffer ring."
   (interactive)
   (buffer-ring--rotate #'dyn-ring-rotate-left))
 
 (defun buffer-ring-next-buffer ()
-  "buffer-ring-next-buffer
-
-   Switch to the previous buffer in the buffer ring.
-  "
+  "Switch to the previous buffer in the buffer ring."
   (interactive)
   (buffer-ring--rotate #'dyn-ring-rotate-right))
 
 (defun buffer-ring-set-buffer-context (&rest args)
-  "If a buffer is visited directly without rotating
-   to it, it should modify the ring structure so that
-   recency is accounted for correctly."
+  "Keep buffer rings updated when buffers are visited.
+
+When a buffer is visited directly without rotating to it, this advice
+function modifies the ring structure and switches the current ring if
+necessary to correctly account for recency.
+
+ARGS are the arguments that the advised function was invoked with."
   (let* ((buffer (current-buffer))
          (bfr-rings (buffer-ring-get-rings buffer)))
     (when bfr-rings
@@ -327,11 +319,9 @@ ring recency is consistent across the board."
       (dyn-ring-segment-value segment))))
 
 (defun buffer-ring-torus-get-ring (name)
-  "buffer-ring-torus-get-ring NAME
+  "Find or create a buffer ring with name NAME.
 
-   Find a existing buffer ring, or create a new buffer ring with name.
-   The buffer-ring is returned.
-  "
+The buffer-ring is returned."
   (let ((found-ring (buffer-ring-torus--find-ring name)))
     (if found-ring
         (progn
@@ -422,26 +412,17 @@ left) or `dyn-ring-rotate-right` (to rotate right)."
              nil)))))
 
 (defun buffer-ring-torus-next-ring ()
-  "buffer-ring-torus-next-ring
-
-   Switch to the previous buffer in the buffer ring.
-  "
+  "Switch to the previous buffer in the buffer ring."
   (interactive)
   (buffer-ring-torus--rotate 'dyn-ring-rotate-right))
 
 (defun buffer-ring-torus-prev-ring ()
-  "buffer-ring-torus-prev-ring
-
-   Switch to the previous buffer in the buffer ring.
-  "
+  "Switch to the previous buffer in the buffer ring."
   (interactive)
   (buffer-ring-torus--rotate 'dyn-ring-rotate-left))
 
 (defun buffer-ring-torus-list-rings ()
-  "buffer-ring-torus-list-rings.
-
-   List the buffer rings in the buffer torus.
-  "
+  "List the buffer rings in the buffer torus."
   (interactive)
   (let ((rings (dyn-ring-traverse-collect buffer-ring-torus
                                           #'buffer-ring-ring-name)))
@@ -450,10 +431,9 @@ left) or `dyn-ring-rotate-right` (to rotate right)."
       (message "No buffer rings."))))
 
 (defun buffer-ring-torus-delete-ring (&optional ring-name)
-  "buffer-ring-torus-delete-ring RING-NAME
+  "Delete the buffer ring with name RING-NAME.
 
-   Delete the entire current buffer-ring.
-  "
+If no name is specified, this deletes the current ring."
   (interactive
    (list
     (read-string (format "Delete which ring [default: %s]? "
