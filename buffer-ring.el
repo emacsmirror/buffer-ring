@@ -10,20 +10,20 @@
 
 ;; This file is NOT a part of Gnu Emacs.
 
-;; License: GPL-v3
-
-;; buffer-ring.el is free software: you can redistribute it and/or
-;; modify it under the terms of the GNU General Public License as
-;; published by the Free Software Foundation, either version 3 of the
-;; License, or (at your option) any later version.
-
-;; This program is distributed in the hope that it will be useful, but
-;; WITHOUT ANY WARRANTY; without even the implied warranty of
-;; MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-;; General Public License for more details.
-
-;; You should have received a copy of the GNU General Public License
-;; along with this program. If not, see <http://www.gnu.org/licenses/>.
+;; This work is "part of the world."  You are free to do whatever you
+;; like with it and it isn't owned by anybody, not even the
+;; creators.  Attribution would be appreciated and is a valuable
+;; contribution in itself, but it is not strictly necessary nor
+;; required.  If you'd like to learn more about this way of doing
+;; things and how it could lead to a peaceful, efficient, and creative
+;; world, and how you can help, visit https://drym.org.
+;;
+;; This paradigm transcends traditional legal and economic systems, but
+;; for the purposes of any such systems within which you may need to
+;; operate:
+;;
+;; This is free and unencumbered software released into the public domain.
+;; The authors relinquish any copyright claims on this work.
 
 ;;; Commentary:
 
