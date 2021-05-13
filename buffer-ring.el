@@ -6,7 +6,7 @@
 ;; URL: https://github.com/countvajhula/buffer-ring
 ;; Created: 2009-4-16
 ;; Version: 0.1.0
-;; Package-Requires: ((emacs "24.4") (dynamic-ring "0.0.2") (s "1.12.0") (ht "2.0"))
+;; Package-Requires: ((emacs "24.4") (dynaring "0.0.2") (s "1.12.0") (ht "2.0"))
 
 ;; This file is NOT a part of Gnu Emacs.
 
@@ -32,7 +32,7 @@
 ;;; Code:
 
 (defconst buffer-ring-version "0.1.1")
-(require 'dynamic-ring)
+(require 'dynaring)
 (require 's)
 (require 'ht)
 
@@ -57,7 +57,7 @@
 (global-set-key (kbd "C-c C-b p") 'buffer-ring-torus-prev-ring)
 (global-set-key (kbd "C-c C-b e") 'buffer-ring-torus-delete-ring)
 
-(defvar buffer-ring-torus (make-dyn-ring)
+(defvar buffer-ring-torus (dynaring-make)
   "A global ring of all the buffer rings.  A torus I believe.")
 
 (defun buffer-ring-initialize ()
@@ -85,7 +85,7 @@
 
 A buffer ring is simply a labeled dynamic ring data structure
 whose members are expected to be buffers."
-  (cons name (make-dyn-ring)))
+  (cons name (dynaring-make)))
 
 (defun buffer-ring-ring-name (buffer-ring)
   "An accessor to get the name of a BUFFER-RING."
@@ -141,7 +141,7 @@ as part of doing the former or when deleting the ring entirely."
   "Drop BFR-RING from the registry of rings.
 
 This should only be called when deleting the ring entirely."
-  (let ((buffers (dyn-ring-values (buffer-ring-ring-ring bfr-ring))))
+  (let ((buffers (dynaring-values (buffer-ring-ring-ring bfr-ring))))
     (dolist (buf buffers)
       (buffer-ring-registry-delete-ring buf bfr-ring))))
 
@@ -158,13 +158,13 @@ use a numeric operator."
   (let* ((bfr-ring (or bfr-ring (buffer-ring-current-ring)))
          (ring (buffer-ring-ring-ring bfr-ring)))
     (if ring
-        (dyn-ring-size ring)
+        (dynaring-size ring)
       -1)))
 
 (defun buffer-ring--add-buffer-to-ring (buffer bfr-ring)
   "Add BUFFER to BFR-RING."
   (let ((ring (buffer-ring-ring-ring bfr-ring)))
-    (dyn-ring-insert ring buffer)
+    (dynaring-insert ring buffer)
     (buffer-ring-register-ring buffer bfr-ring)
     (with-current-buffer buffer
       (add-hook 'kill-buffer-hook 'buffer-ring-drop-buffer t t))))
@@ -185,7 +185,7 @@ is provided it assumes the current buffer."
   (let* ((bfr-ring (buffer-ring-torus-get-ring ring-name))
          (ring (buffer-ring-ring-ring bfr-ring))
          (buffer (or buffer (current-buffer))))
-    (cond ((dyn-ring-contains-p ring buffer)
+    (cond ((dynaring-contains-p ring buffer)
            (message "buffer %s is already in ring \"%s\"" (buffer-name)
                     ring-name)
            ;; switch to the ring, all the same, for consistency
@@ -205,7 +205,7 @@ This modifies the ring, it does not kill the buffer."
   (let ((buffer (or buffer (current-buffer))))
     (if (buffer-ring-current-ring)
         (let ((ring (buffer-ring-ring-ring (buffer-ring-current-ring))))
-          (if (dyn-ring-delete ring buffer)
+          (if (dynaring-delete ring buffer)
               (progn
                 (buffer-ring-registry-delete-ring buffer (buffer-ring-current-ring))
                 (message "Deleted buffer %s from ring %s"
@@ -238,7 +238,7 @@ to the koala buffer."
   (let* ((bfr-ring (buffer-ring-current-ring))
          (ring (buffer-ring-ring-ring bfr-ring)))
     (if bfr-ring
-        (let ((result (dyn-ring-traverse-collect ring #'buffer-name)))
+        (let ((result (dynaring-traverse-collect ring #'buffer-name)))
           (if result
               (message "buffers in [%s]: %s" (buffer-ring-ring-name bfr-ring) result)
             (message "Buffer ring is empty.")))
@@ -247,26 +247,26 @@ to the koala buffer."
 (defun buffer-ring--rotate (direction)
   "Rotate the buffer ring.
 
-DIRECTION must be a function, either `dyn-ring-rotate-left` (to rotate
-left) or `dyn-ring-rotate-right` (to rotate right)."
+DIRECTION must be a function, either `dynaring-rotate-left` (to rotate
+left) or `dynaring-rotate-right` (to rotate right)."
   (let ((bfr-ring (buffer-ring-current-ring)))
     (when bfr-ring
       (let ((ring (buffer-ring-ring-ring bfr-ring)))
-        (unless (dyn-ring-empty-p ring)
-          (when (= 1 (dyn-ring-size ring))
+        (unless (dynaring-empty-p ring)
+          (when (= 1 (dynaring-size ring))
             (message "There is only one buffer in the ring."))
           (funcall direction ring)
-          (switch-to-buffer (dyn-ring-value ring)))))))
+          (switch-to-buffer (dynaring-value ring)))))))
 
 (defun buffer-ring-prev-buffer ()
   "Switch to the previous buffer in the buffer ring."
   (interactive)
-  (buffer-ring--rotate #'dyn-ring-rotate-left))
+  (buffer-ring--rotate #'dynaring-rotate-left))
 
 (defun buffer-ring-next-buffer ()
   "Switch to the previous buffer in the buffer ring."
   (interactive)
-  (buffer-ring--rotate #'dyn-ring-rotate-right))
+  (buffer-ring--rotate #'dynaring-rotate-right))
 
 (defun buffer-ring-set-buffer-context (&rest args)
   "Keep buffer rings updated when buffers are visited.
@@ -280,14 +280,14 @@ ARGS are the arguments that the advised function was invoked with."
          (bfr-rings (buffer-ring-get-rings buffer)))
     (when bfr-rings
       (let ((ring (buffer-ring-ring-ring (buffer-ring-current-ring))))
-        (if (dyn-ring-contains-p ring buffer)
+        (if (dynaring-contains-p ring buffer)
             ;; if it is already at the head, we don't
             ;; need to do anything, and we probably arrived
             ;; here via a buffer-ring interface
-            (unless (eq buffer (dyn-ring-value ring))
+            (unless (eq buffer (dynaring-value ring))
               ;; TODO: should we reinsert the buffer
               ;; in all of its associated rings?
-              (dyn-ring-break-insert ring buffer))
+              (dynaring-break-insert ring buffer))
           (buffer-ring-torus-switch-to-ring
            (buffer-ring-ring-name (car bfr-rings))))))))
 
@@ -297,7 +297,7 @@ ARGS are the arguments that the advised function was invoked with."
 We'd want to do this each time the ring becomes current, so that
 ring recency is consistent across the board."
   (let ((bfr-ring (or bfr-ring (buffer-ring-current-ring))))
-    (dolist (buffer (dyn-ring-values (buffer-ring-ring-ring bfr-ring)))
+    (dolist (buffer (dynaring-values (buffer-ring-ring-ring bfr-ring)))
       (buffer-ring-register-ring buffer bfr-ring))))
 
 ;;
@@ -307,17 +307,17 @@ ring recency is consistent across the board."
 (defun buffer-ring-torus--create-ring (name)
   "Create ring with name NAME."
   (let ((bfr-ring (buffer-ring-make-ring name)))
-    (dyn-ring-insert buffer-ring-torus bfr-ring)
+    (dynaring-insert buffer-ring-torus bfr-ring)
     bfr-ring))
 
 (defun buffer-ring-torus--find-ring (name)
   "Find a ring with name NAME."
-  (let ((segment (dyn-ring-find-forwards buffer-ring-torus
+  (let ((segment (dynaring-find-forwards buffer-ring-torus
                                          (lambda (r)
                                            (string= name
                                                     (buffer-ring-ring-name r))))))
     (when segment
-      (dyn-ring-segment-value segment))))
+      (dynaring-segment-value segment))))
 
 (defun buffer-ring-torus-get-ring (name)
   "Find or create a buffer ring with name NAME.
@@ -335,20 +335,20 @@ The buffer-ring is returned."
   "Switch to ring NAME."
   (interactive "sSwitch to ring ? ")
   (let ((buffer (current-buffer))
-        (segment (dyn-ring-find-forwards buffer-ring-torus
+        (segment (dynaring-find-forwards buffer-ring-torus
                                          (lambda (r)
                                            (string= name
                                                     (buffer-ring-ring-name r))))))
     (when segment
-      (let ((bfr-ring (dyn-ring-segment-value segment)))
+      (let ((bfr-ring (dynaring-segment-value segment)))
         ;; switch to ring and reinsert it at the head
-        (dyn-ring-break-insert buffer-ring-torus
+        (dynaring-break-insert buffer-ring-torus
                                bfr-ring)
         (buffer-ring-torus--switch-ring bfr-ring buffer)))))
 
 (defun buffer-ring-current-ring ()
   "Get the current (active) buffer ring."
-  (dyn-ring-value buffer-ring-torus))
+  (dynaring-value buffer-ring-torus))
 
 (defun buffer-ring-current-ring-name ()
   "Get the name of the current buffer ring."
@@ -362,7 +362,7 @@ The buffer-ring is returned."
 (defun buffer-ring-current-buffer (&optional bfr-ring)
   "Current buffer in BFR-RING."
   (let ((bfr-ring (or bfr-ring (buffer-ring-current-ring))))
-    (dyn-ring-value (buffer-ring-ring-ring bfr-ring))))
+    (dynaring-value (buffer-ring-ring-ring bfr-ring))))
 
 (defun buffer-ring-torus--switch-ring (bfr-ring buffer)
   "Perform any actions in connection with switching to a new ring.
@@ -374,8 +374,8 @@ BFR-RING is the new ring switched to, and BUFFER is the original buffer."
     (buffer-ring-surface-ring bfr-ring)
     ;; if original buffer is in the new ring, stay there
     ;; and reinsert it to account for recency
-    (when (dyn-ring-contains-p ring buffer)
-      (dyn-ring-break-insert ring buffer))
+    (when (dynaring-contains-p ring buffer)
+      (dynaring-break-insert ring buffer))
     (switch-to-buffer
      (buffer-ring-current-buffer bfr-ring))))
 
@@ -383,28 +383,28 @@ BFR-RING is the new ring switched to, and BUFFER is the original buffer."
 (defun buffer-ring-torus--rotate (direction)
   "Rotate the buffer ring torus.
 
-DIRECTION must be a function, either `dyn-ring-rotate-left` (to rotate
-left) or `dyn-ring-rotate-right` (to rotate right)."
+DIRECTION must be a function, either `dynaring-rotate-left` (to rotate
+left) or `dynaring-rotate-right` (to rotate right)."
   (let ((buffer (current-buffer))
         (initial-bfr-ring (buffer-ring-current-ring)))
-    (cond ((dyn-ring-empty-p buffer-ring-torus)
+    (cond ((dynaring-empty-p buffer-ring-torus)
            (message "There are no rings in the buffer torus.")
            nil)
-          ((= 1 (dyn-ring-size buffer-ring-torus))
+          ((= 1 (dynaring-size buffer-ring-torus))
            (message "There is only one buffer ring.")
-           (unless (dyn-ring-empty-p (buffer-ring-ring-ring (buffer-ring-current-ring)))
+           (unless (dynaring-empty-p (buffer-ring-ring-ring (buffer-ring-current-ring)))
              (switch-to-buffer
               (buffer-ring-current-buffer (buffer-ring-current-ring))))
            t)
           (t
            ;; rotate past any empties
-           (if (dyn-ring-rotate-until buffer-ring-torus
+           (if (dynaring-rotate-until buffer-ring-torus
                                       direction
                                       (lambda (bfr-ring)
                                         ;; we want to rotate at least once
                                         (and (not (eq initial-bfr-ring
                                                       bfr-ring))
-                                             (not (dyn-ring-empty-p
+                                             (not (dynaring-empty-p
                                                    (buffer-ring-ring-ring bfr-ring))))))
                (progn
                  (message "switching to ring %s" (buffer-ring-current-ring-name))
@@ -415,17 +415,17 @@ left) or `dyn-ring-rotate-right` (to rotate right)."
 (defun buffer-ring-torus-next-ring ()
   "Switch to the previous buffer in the buffer ring."
   (interactive)
-  (buffer-ring-torus--rotate 'dyn-ring-rotate-right))
+  (buffer-ring-torus--rotate 'dynaring-rotate-right))
 
 (defun buffer-ring-torus-prev-ring ()
   "Switch to the previous buffer in the buffer ring."
   (interactive)
-  (buffer-ring-torus--rotate 'dyn-ring-rotate-left))
+  (buffer-ring-torus--rotate 'dynaring-rotate-left))
 
 (defun buffer-ring-torus-list-rings ()
   "List the buffer rings in the buffer torus."
   (interactive)
-  (let ((rings (dyn-ring-traverse-collect buffer-ring-torus
+  (let ((rings (dynaring-traverse-collect buffer-ring-torus
                                           #'buffer-ring-ring-name)))
     (if rings
         (message "Buffer rings: %s" (s-join ", " rings))
@@ -447,9 +447,9 @@ If no name is specified, this deletes the current ring."
     (message "ring name is %s" ring-name)
     (if bfr-ring
         (progn (buffer-ring-registry-drop-ring bfr-ring)
-               (dyn-ring-delete buffer-ring-torus bfr-ring)
+               (dynaring-delete buffer-ring-torus bfr-ring)
                (message "Ring %s deleted." ring-name))
-      (dyn-ring-destroy (buffer-ring-ring-ring bfr-ring))
+      (dynaring-destroy (buffer-ring-ring-ring bfr-ring))
       (message "No such ring."))))
 
 (provide 'buffer-ring)
