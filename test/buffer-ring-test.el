@@ -1,6 +1,9 @@
 ;; Note: we want to retain dynamic binding for these tests because the
 ;; ERT "fixtures" rely on it.
 
+;; To run the tests from within Emacs, you must `eval-buffer` this test
+;; buffer first. Then, run tests using `ert-run-tests-interactively`.
+
 ;; Add source paths to load path so the tests can find the source files
 ;; Adapted from:
 ;; https://github.com/Lindydancer/cmake-font-lock/blob/47687b6ccd0e244691fb5907aaba609e5a42d787/test/cmake-font-lock-test-setup.el#L20-L27
