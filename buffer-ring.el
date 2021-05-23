@@ -2,7 +2,7 @@
 
 ;; Author: Mike Mattie <codermattie@gmail.com>
 ;;         Sid Kasivajhula <sid@countvajhula.com>
-;; Maintainer: Mike Mattie codermattie@gmail.com
+;; Maintainer: Sid Kasivajhula <sid@countvajhula.com>
 ;; URL: https://github.com/countvajhula/buffer-ring
 ;; Created: 2009-4-16
 ;; Version: 0.1.0
