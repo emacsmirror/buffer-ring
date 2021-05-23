@@ -42,20 +42,24 @@
 ;; default keymap
 ;;
 
-(global-set-key (kbd "C-c C-b l") 'buffer-ring-list-buffers)
-(global-set-key (kbd "C-c C-b r") 'buffer-ring-torus-list-rings)
-(global-set-key (kbd "C-c C-b w") 'buffer-ring-show-name)
+(define-minor-mode buffer-ring-mode
+  "Minor mode to modulate keybindings in buffer-ring mode."
+  :lighter " buffer-ring"
+  :keymap
+  (let ((buffer-ring-map (make-sparse-keymap)))
+    (define-key buffer-ring-map (kbd "C-c C-b l") #'buffer-ring-list-buffers)
+    (define-key buffer-ring-map (kbd "C-c C-b r") #'buffer-ring-torus-list-rings)
+    (define-key buffer-ring-map (kbd "C-c C-b w") #'buffer-ring-show-name)
+    (define-key buffer-ring-map (kbd "C-c C-b a") #'buffer-ring-add)
+    (define-key buffer-ring-map (kbd "C-c C-b d") #'buffer-ring-delete)
+    (define-key buffer-ring-map (kbd "C-c C-b c") #'buffer-ring-drop-buffer)
+    (define-key buffer-ring-map (kbd "C-c C-b f") #'buffer-ring-next-buffer)
+    (define-key buffer-ring-map (kbd "C-c C-b b") #'buffer-ring-prev-buffer)
+    (define-key buffer-ring-map (kbd "C-c C-b n") #'buffer-ring-torus-next-ring)
+    (define-key buffer-ring-map (kbd "C-c C-b p") #'buffer-ring-torus-prev-ring)
+    (define-key buffer-ring-map (kbd "C-c C-b e") #'buffer-ring-torus-delete-ring)
 
-(global-set-key (kbd "C-c C-b a") 'buffer-ring-add)
-(global-set-key (kbd "C-c C-b d") 'buffer-ring-delete)
-(global-set-key (kbd "C-c C-b c") 'buffer-ring-drop-buffer)
-
-(global-set-key (kbd "C-c C-b f") 'buffer-ring-next-buffer)
-(global-set-key (kbd "C-c C-b b") 'buffer-ring-prev-buffer)
-
-(global-set-key (kbd "C-c C-b n") 'buffer-ring-torus-next-ring)
-(global-set-key (kbd "C-c C-b p") 'buffer-ring-torus-prev-ring)
-(global-set-key (kbd "C-c C-b e") 'buffer-ring-torus-delete-ring)
+    buffer-ring-map))
 
 (defvar buffer-ring-torus (dynaring-make)
   "A global ring of all the buffer rings.  A torus I believe.")
