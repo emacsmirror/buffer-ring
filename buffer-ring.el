@@ -6,7 +6,7 @@
 ;; URL: https://github.com/countvajhula/buffer-ring
 ;; Created: 2009-4-16
 ;; Version: 0.1.0
-;; Package-Requires: ((emacs "24.4") (dynaring "0.0.2") (s "1.12.0") (ht "2.0"))
+;; Package-Requires: ((emacs "24.4") (dynaring "0.2.0") (s "1.12.0") (ht "2.0"))
 
 ;; This file is NOT a part of Gnu Emacs.
 
