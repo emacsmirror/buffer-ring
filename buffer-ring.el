@@ -167,7 +167,7 @@ use a numeric operator."
     (dynaring-insert ring buffer)
     (buffer-ring-register-ring buffer bfr-ring)
     (with-current-buffer buffer
-      (add-hook 'kill-buffer-hook 'buffer-ring-drop-buffer t t))))
+      (add-hook 'kill-buffer-hook #'buffer-ring-drop-buffer t t))))
 
 (defun buffer-ring-add (ring-name &optional buffer)
   "Add the BUFFER to the ring with name RING-NAME.
@@ -230,7 +230,7 @@ to the koala buffer."
         (buffer-ring-delete buffer)))
     ;; remove the buffer from the buffer ring registry
     (ht-remove! buffer-rings (buffer-ring-registry-get-key buffer))
-    (remove-hook 'kill-buffer-hook 'buffer-ring-drop-buffer t)))
+    (remove-hook 'kill-buffer-hook #'buffer-ring-drop-buffer t)))
 
 (defun buffer-ring-list-buffers ()
   "List the buffers in the current buffer ring."
