@@ -35,6 +35,7 @@ jobs:
       - name: Install Package and its Dependencies
         run: make install
       - name: Lint
+        continue-on-error: true
         run: make lint
       - name: Check Docstrings
         continue-on-error: true
