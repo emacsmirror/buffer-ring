@@ -117,16 +117,19 @@ An accessor for the dynamic ring component of the BUFFER-RING."
 
 (defun buffer-ring-get-rings (&optional buffer)
   "All rings that BUFFER is part of."
-  (let ((buffer (or buffer (current-buffer))))
-    (ht-get buffer-rings (buffer-ring-registry-get-key buffer))))
+  (let* ((buffer (or buffer (current-buffer)))
+         (ring-names (ht-get buffer-rings
+                             (buffer-ring-registry-get-key buffer))))
+    (seq-map #'buffer-ring-torus--find-ring ring-names)))
 
 (defun buffer-ring-register-ring (buffer bfr-ring)
   "Register that BUFFER has been added to BFR-RING."
-  (let ((key (buffer-ring-registry-get-key buffer)))
+  (let ((key (buffer-ring-registry-get-key buffer))
+        (ring-name (buffer-ring-ring-name bfr-ring)))
     (ht-set! buffer-rings
              key
              (delete-dups
-              (cons bfr-ring
+              (cons ring-name
                     (ht-get buffer-rings
                             key))))))
 
@@ -136,10 +139,11 @@ An accessor for the dynamic ring component of the BUFFER-RING."
 This does NOT delete the buffer from the ring, only the ring
 identifier from the buffer.  It should only be called either
 as part of doing the former or when deleting the ring entirely."
-  (let ((key (buffer-ring-registry-get-key buffer)))
+  (let ((key (buffer-ring-registry-get-key buffer))
+        (ring-name (buffer-ring-ring-name bfr-ring)))
     (ht-set! buffer-rings
              key
-             (remq bfr-ring
+             (remq ring-name
                    (ht-get buffer-rings
                            key)))))
 
