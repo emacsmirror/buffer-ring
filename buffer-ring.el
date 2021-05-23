@@ -268,14 +268,14 @@ left) or `dynaring-rotate-right` (to rotate right)."
   (interactive)
   (buffer-ring--rotate #'dynaring-rotate-right))
 
-(defun buffer-ring-set-buffer-context (&rest args)
+(defun buffer-ring-set-buffer-context (&rest _args)
   "Keep buffer rings updated when buffers are visited.
 
 When a buffer is visited directly without rotating to it, this advice
 function modifies the ring structure and switches the current ring if
 necessary to correctly account for recency.
 
-ARGS are the arguments that the advised function was invoked with."
+_ARGS are the arguments that the advised function was invoked with."
   (let* ((buffer (current-buffer))
          (bfr-rings (buffer-ring-get-rings buffer)))
     (when bfr-rings
