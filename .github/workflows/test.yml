@@ -12,6 +12,7 @@ jobs:
     strategy:
       matrix:
         emacs_version:
+          - '26.1'
           - '27.1'
           - 'snapshot'
     name: Test on Emacs ${{ matrix.emacs_version }}
@@ -26,7 +27,7 @@ jobs:
       - name: Install Emacs
         uses: purcell/setup-emacs@master
         with:
-          version: '26.3'
+          version: ${{ matrix.emacs_version }}
       - name: Install Cask
         uses: conao3/setup-cask@master
         with:
