@@ -9,10 +9,6 @@ CASK ?= cask
 INIT_PACKAGE_EL="(progn  \
   (require 'package)  \
   (push '(\"melpa\" . \"http://melpa.org/packages/\") package-archives)  \
-  (setq my-package-dir \"$(PWD)\")  \
-  (add-to-list 'load-path my-package-dir)  \
-  (let ((default-directory my-package-dir))  \
-    (normal-top-level-add-subdirs-to-load-path))  \
   (package-initialize))"
 
 PROJECT_FILES=`${CASK} files`
@@ -49,7 +45,7 @@ lint-no-noise:
 checkdoc:
 	${CASK} exec $(EMACS) -Q --batch  \
 	                      --eval $(INIT_PACKAGE_EL)  \
-	                      -l "build-utils.el"  \
+	                      -l "dev/build-utils.el"  \
 	                      --eval '(flycheck/batch-checkdoc ".")'
 
 build :
