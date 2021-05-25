@@ -9,7 +9,9 @@ CASK ?= cask
 INIT_PACKAGE_EL="(progn  \
   (require 'package)  \
   (push '(\"melpa\" . \"http://melpa.org/packages/\") package-archives)  \
-  (package-initialize))"
+  (package-initialize)  \
+  (unless package-archive-contents \
+     (package-refresh-contents)))"
 
 PROJECT_FILES=`${CASK} files`
 
