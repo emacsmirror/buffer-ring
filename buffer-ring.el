@@ -278,6 +278,30 @@ left) or `dynaring-rotate-right` (to rotate right)."
   (interactive)
   (buffer-ring--rotate #'dynaring-rotate-right))
 
+(defun buffer-ring-visit-buffer (&optional buffer)
+  "Visit BUFFER.
+
+This makes it current in all rings of which it is part, and
+switches the current ring to be the most recent one containing
+the buffer. Note that this does not actually switch to the
+buffer in question, but is likely to be called in connection
+with such a switch occurring."
+  (let* ((buffer (current-buffer))
+         (bfr-rings (buffer-ring-get-rings buffer)))
+    ;; if the buffer isn't in any ring, we don't need to do anything
+    (when bfr-rings
+      (let ((ring (buffer-ring-ring-ring (buffer-ring-current-ring))))
+        ;; if it's already at the head of the current ring,
+        ;; we don't need to do anything, and we probably
+        ;; arrived here via a buffer-ring interface
+        (unless (and (dynaring-contains-p ring buffer)
+                     (eq buffer (dynaring-value ring)))
+          (dolist (bring bfr-rings)
+            (dynaring-break-insert (buffer-ring-ring-ring bring)
+                                   buffer))
+          (buffer-ring-torus-switch-to-ring
+           (buffer-ring-ring-name (car bfr-rings))))))))
+
 (defun buffer-ring-set-buffer-context (&rest _args)
   "Keep buffer rings updated when buffers are visited.
 
@@ -286,20 +310,7 @@ function modifies the ring structure and switches the current ring if
 necessary to correctly account for recency.
 
 _ARGS are the arguments that the advised function was invoked with."
-  (let* ((buffer (current-buffer))
-         (bfr-rings (buffer-ring-get-rings buffer)))
-    (when bfr-rings
-      (let ((ring (buffer-ring-ring-ring (buffer-ring-current-ring))))
-        (if (dynaring-contains-p ring buffer)
-            ;; if it is already at the head, we don't
-            ;; need to do anything, and we probably arrived
-            ;; here via a buffer-ring interface
-            (unless (eq buffer (dynaring-value ring))
-              ;; TODO: should we reinsert the buffer
-              ;; in all of its associated rings?
-              (dynaring-break-insert ring buffer))
-          (buffer-ring-torus-switch-to-ring
-           (buffer-ring-ring-name (car bfr-rings))))))))
+  (buffer-ring-visit-buffer (current-buffer)))
 
 (defun buffer-ring-surface-ring (&optional bfr-ring)
   "Make BFR-RING the most recent ring in all member buffers.

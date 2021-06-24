@@ -944,14 +944,14 @@
      (kill-buffer buffer)
      (should (= 2 (dynaring-size (buffer-ring-ring-ring bring2)))))))
 
-(ert-deftest buffer-ring-set-buffer-context-test ()
+(ert-deftest buffer-ring-visit-buffer-test ()
   ;; if buffer is unaffiliated, nothing happens
   (fixture-2-0-1
    (lambda ()
      (let ((new-buf (generate-new-buffer bfr-test-name-prefix)))
        (unwind-protect
            (with-current-buffer new-buf
-             (buffer-ring-set-buffer-context)
+             (buffer-ring-visit-buffer)
              (should (eq bring1 (buffer-ring-current-ring))))
          (kill-buffer new-buf)))))
 
@@ -959,7 +959,7 @@
   (fixture-3-0-1-3
    (lambda ()
      (with-current-buffer buffer
-       (buffer-ring-set-buffer-context)
+       (buffer-ring-visit-buffer)
        (should (eq bring2 (buffer-ring-current-ring)))
        (should (eq buffer (buffer-ring-current-buffer))))))
 
@@ -967,11 +967,34 @@
   (fixture-3-0-1-3
    (lambda ()
      (with-current-buffer buf3
-       (buffer-ring-set-buffer-context)
+       (buffer-ring-visit-buffer)
        (should (eq bring2 (buffer-ring-current-ring)))
        (should (eq buf3 (buffer-ring-current-buffer))))))
 
   ;; if buffer is in a different ring, current ring is changed
+  (fixture-3-0-1-2
+   (lambda ()
+     (with-current-buffer buf1
+       (buffer-ring-visit-buffer)
+       (should (eq bring1 (buffer-ring-current-ring)))
+       (should (eq buf1 (buffer-ring-current-buffer))))))
+
+  ;; buffer is current in every ring that it is part of
+  (fixture-3-0-1-3
+   (lambda ()
+     (with-current-buffer buf1
+       (buffer-ring-torus-switch-to-ring bfr-2-ring-name)
+       (buffer-ring-next-buffer)
+       ;; validate that buf1 is no longer current in ring 2
+       (should-not (eq buf1 (buffer-ring-current-buffer bring2)))
+       (buffer-ring-torus-switch-to-ring bfr-0-ring-name)
+       (buffer-ring-visit-buffer buf1)
+       (should (eq buf1 (buffer-ring-current-buffer bring1)))
+       (should (eq buf1 (buffer-ring-current-buffer bring2)))))))
+
+(ert-deftest buffer-ring-set-buffer-context-test ()
+  ;; if buffer is in a different ring, current ring is changed
+  ;; and it is placed at the head
   (fixture-3-0-1-2
    (lambda ()
      (with-current-buffer buf1
