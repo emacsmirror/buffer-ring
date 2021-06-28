@@ -58,7 +58,7 @@
           (dynaring-destroy (buffer-ring-ring-ring bring0))))
       (dynaring-destroy buffer-ring-torus))))
 
-(defun fixture-1-0 (body)
+(defun fixture-1-0 (body-10)
   ;; 1 empty buffer ring
   ;; an unaffiliated buffer
   (let ((bring0 nil)
@@ -68,18 +68,18 @@
                (setq buffer-rings (ht))
                (setq bring0 (buffer-ring-torus-get-ring bfr-0-ring-name)
                      buffer (generate-new-buffer bfr-test-name-prefix))
-               (funcall body))
+               (funcall body-10))
       (kill-buffer buffer)
       (dynaring-destroy buffer-ring-torus)
       (dynaring-destroy (buffer-ring-ring-ring bring0)))))
 
-(defun fixture-1-A (body2)
+(defun fixture-1-A (body-1a)
   (fixture-1-0
    (lambda ()
      (buffer-ring--add-buffer-to-ring buffer bring0)
-     (funcall body2))))
+     (funcall body-1a))))
 
-(defun fixture-1-AB (body3)
+(defun fixture-1-AB (body-1ab)
   (fixture-1-A
    (lambda ()
      (let ((buf2 nil))
@@ -87,10 +87,10 @@
            (progn
              (setq buf2 (generate-new-buffer bfr-test-name-prefix))
              (buffer-ring--add-buffer-to-ring buf2 bring0)
-             (funcall body3))
+             (funcall body-1ab))
          (kill-buffer buf2))))))
 
-(defun fixture-1-ABC (body4)
+(defun fixture-1-ABC (body-1abc)
   (fixture-1-AB
    (lambda ()
      (let ((buf3 nil))
@@ -98,32 +98,25 @@
            (progn
              (setq buf3 (generate-new-buffer bfr-test-name-prefix))
              (buffer-ring--add-buffer-to-ring buf3 bring0)
-             (funcall body4))
+             (funcall body-1abc))
          (kill-buffer buf3))))))
 
-(defun fixture-2-0-1 (body)
+(defun fixture-2-0-A (body-20a)
   ;; 2 buffer rings: empty, 1 element
-  (let ((bring0 nil)
-        (bring1 nil)
-        (buffer nil))
-    (unwind-protect
-        (progn
-          (setq buffer-ring-torus (dynaring-make))
-          (setq buffer-rings (ht))
-          (setq bring0 (buffer-ring-torus-get-ring bfr-0-ring-name)
-                bring1 (buffer-ring-torus-get-ring bfr-1-ring-name)
-                buffer (generate-new-buffer bfr-test-name-prefix))
-          (buffer-ring--add-buffer-to-ring buffer bring1)
-          (funcall body))
-      (kill-buffer buffer)
-      (dynaring-destroy buffer-ring-torus)
-      (dynaring-destroy (buffer-ring-ring-ring bring0))
-      (dynaring-destroy (buffer-ring-ring-ring bring1)))))
+  (fixture-1-0
+   (lambda ()
+     (let ((bring1 nil))
+       (unwind-protect
+           (progn
+             (setq bring1 (buffer-ring-torus-get-ring bfr-1-ring-name))
+             (buffer-ring--add-buffer-to-ring buffer bring1)
+             (funcall body-20a))
+         (dynaring-destroy (buffer-ring-ring-ring bring1)))))))
 
 (defun fixture-2-1-1 (body2)
   ;; 2 buffer rings: empty, 1 element
   ;; add a buffer to the empty ring
-  (fixture-2-0-1
+  (fixture-2-0-A
    (lambda ()
      (buffer-ring--add-buffer-to-ring buffer bring0)
      (funcall body2))))
@@ -252,7 +245,7 @@
 
 (ert-deftest buffer-ring-torus-switch-to-ring-test ()
   ;; does not switch to non-existent ring
-  (fixture-2-0-1
+  (fixture-2-0-A
    (lambda ()
      (should-not (buffer-ring-torus-switch-to-ring "non-existent"))))
 
@@ -351,7 +344,7 @@
                  (car (buffer-ring-get-rings buffer))))))
 
   ;; should not add when already present
-  (fixture-2-0-1
+  (fixture-2-0-A
    (lambda ()
      (should-not (buffer-ring-add (buffer-ring-ring-name bring1)
                                   buffer))))
@@ -665,7 +658,7 @@
              (should (eq (current-buffer) buffer)))
          (kill-buffer new-buf)))))
 
-  (fixture-2-0-1
+  (fixture-2-0-A
    (lambda ()
      (let ((new-buf (generate-new-buffer bfr-test-name-prefix)))
        (unwind-protect
@@ -797,7 +790,7 @@
              (should (eq (current-buffer) buffer)))
          (kill-buffer new-buf)))))
 
-  (fixture-2-0-1
+  (fixture-2-0-A
    (lambda ()
      (let ((new-buf (generate-new-buffer bfr-test-name-prefix)))
        (unwind-protect
@@ -955,7 +948,7 @@
 
 (ert-deftest buffer-ring-visit-buffer-test ()
   ;; if buffer is unaffiliated, nothing happens
-  (fixture-2-0-1
+  (fixture-2-0-A
    (lambda ()
      (let ((new-buf (generate-new-buffer bfr-test-name-prefix)))
        (unwind-protect
