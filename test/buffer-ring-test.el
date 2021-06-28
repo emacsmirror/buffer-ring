@@ -26,6 +26,15 @@
 ;; Fixtures
 ;;
 
+;; TODO: maybe write macros to spin up fixtures based on
+;; a conveniently indicated specification, since in these
+;; tests we'd like to be able to say, this many rings with
+;; this many buffers (as we are already doing) but also,
+;; it'd be nice to indicate _which_ buffers go in which
+;; rings without having to manually code that
+;; so instead of fixture-N-M-...
+;; maybe fixture-N-ABC-AB-0
+
 (defvar bfr-test-name-prefix "bfr-test")
 (defvar bfr-new-ring-name "bfr-test-new-ring")
 (defvar bfr-0-ring-name "bfr-test-ring-0")
@@ -64,14 +73,14 @@
       (dynaring-destroy buffer-ring-torus)
       (dynaring-destroy (buffer-ring-ring-ring bring)))))
 
-(defun fixture-1-1 (body2)
+(defun fixture-1-A (body2)
   (fixture-1-0
    (lambda ()
      (buffer-ring--add-buffer-to-ring buffer bring)
      (funcall body2))))
 
-(defun fixture-1-2 (body3)
-  (fixture-1-1
+(defun fixture-1-AB (body3)
+  (fixture-1-A
    (lambda ()
      (let ((buf2 nil))
        (unwind-protect
@@ -81,8 +90,8 @@
              (funcall body3))
          (kill-buffer buf2))))))
 
-(defun fixture-1-3 (body4)
-  (fixture-1-2
+(defun fixture-1-ABC (body4)
+  (fixture-1-AB
    (lambda ()
      (let ((buf3 nil))
        (unwind-protect
@@ -468,15 +477,15 @@
    (lambda ()
      (should-not (buffer-ring-delete buffer))))
 
-  (fixture-1-1
+  (fixture-1-A
    (lambda ()
      (should (buffer-ring-delete buffer))))
-  (fixture-1-1
+  (fixture-1-A
    (lambda ()
      (buffer-ring-delete buffer)
      (should-not (dynaring-contains-p (buffer-ring-ring-ring bring)
                                       buffer))))
-  (fixture-1-1
+  (fixture-1-A
    (lambda ()
      (buffer-ring-delete buffer)
      (should (= 0 (dynaring-size (buffer-ring-ring-ring bring))))))
@@ -528,14 +537,14 @@
        (should-not (funcall sut))
        (should (eq (current-buffer) buffer)))))
 
-  (fixture-1-1
+  (fixture-1-A
    (lambda ()
      (with-current-buffer buffer
        (should (funcall sut))
        (should (eq (current-buffer) buffer)))))
 
   ;; when abroad, rotating the ring changes to a native buffer
-  (fixture-1-1
+  (fixture-1-A
    (lambda ()
      (let ((new-buf (generate-new-buffer bfr-test-name-prefix)))
        (unwind-protect
@@ -545,11 +554,11 @@
          (kill-buffer new-buf)))))
 
   ;; head is buf2 initially
-  (fixture-1-2
+  (fixture-1-AB
    (lambda ()
      (should (funcall sut))
      (should (eq (current-buffer) buffer))))
-  (fixture-1-2
+  (fixture-1-AB
    (lambda ()
      (should
       (progn (funcall sut)
@@ -557,17 +566,17 @@
      (should (eq (current-buffer) buf2))))
 
   ;; head is buf3 initially
-  (fixture-1-3
+  (fixture-1-ABC
    (lambda ()
      (should (funcall sut))
      (should (eq (current-buffer) buf2))))
-  (fixture-1-3
+  (fixture-1-ABC
    (lambda ()
      (should
       (progn (funcall sut)
              (funcall sut)))
      (should (eq (current-buffer) buffer))))
-  (fixture-1-3
+  (fixture-1-ABC
    (lambda ()
      (should
       (progn (funcall sut)
@@ -589,18 +598,18 @@
        (should-not (funcall sut))
        (should (eq (current-buffer) buffer)))))
 
-  (fixture-1-1
+  (fixture-1-A
    (lambda ()
      (with-current-buffer buffer
        (should (funcall sut))
        (should (eq (current-buffer) buffer)))))
 
   ;; head is buf2 initially
-  (fixture-1-2
+  (fixture-1-AB
    (lambda ()
      (should (funcall sut))
      (should (eq (current-buffer) buffer))))
-  (fixture-1-2
+  (fixture-1-AB
    (lambda ()
      (should
       (progn (funcall sut)
@@ -608,17 +617,17 @@
      (should (eq (current-buffer) buf2))))
 
   ;; head is buf3 initially
-  (fixture-1-3
+  (fixture-1-ABC
    (lambda ()
      (should (funcall sut))
      (should (eq (current-buffer) buffer))))
-  (fixture-1-3
+  (fixture-1-ABC
    (lambda ()
      (should
       (progn (funcall sut)
              (funcall sut)))
      (should (eq (current-buffer) buf2))))
-  (fixture-1-3
+  (fixture-1-ABC
    (lambda ()
      (should
       (progn (funcall sut)
@@ -640,14 +649,14 @@
        (should (funcall sut))
        (should (eq (current-buffer) buffer)))))
 
-  (fixture-1-1
+  (fixture-1-A
    (lambda ()
      (with-current-buffer buffer
        (should (funcall sut))
        (should (eq (current-buffer) buffer)))))
 
   ;; when abroad, rotating the torus changes to a native buffer
-  (fixture-1-1
+  (fixture-1-A
    (lambda ()
      (let ((new-buf (generate-new-buffer bfr-test-name-prefix)))
        (unwind-protect
@@ -772,14 +781,14 @@
        (should (funcall sut))
        (should (eq (current-buffer) buffer)))))
 
-  (fixture-1-1
+  (fixture-1-A
    (lambda ()
      (with-current-buffer buffer
        (should (funcall sut))
        (should (eq (current-buffer) buffer)))))
 
   ;; when abroad, rotating the torus changes to a native buffer
-  (fixture-1-1
+  (fixture-1-A
    (lambda ()
      (let ((new-buf (generate-new-buffer bfr-test-name-prefix)))
        (unwind-protect
@@ -900,17 +909,17 @@
      (kill-buffer buffer)
      (should (dynaring-empty-p (buffer-ring-ring-ring (buffer-ring-current-ring))))))
 
-  (fixture-1-1
+  (fixture-1-A
    (lambda ()
      (kill-buffer buffer)
      (should-not (dynaring-contains-p (buffer-ring-ring-ring bring)
                                       buffer))))
-  (fixture-1-1
+  (fixture-1-A
    (lambda ()
      (let ((key (buffer-ring-registry-get-key buffer)))
        (kill-buffer buffer)
        (should-not (member bring (ht-get buffer-rings key))))))
-  (fixture-1-1
+  (fixture-1-A
    (lambda ()
      (kill-buffer buffer)
      (should (= 0 (dynaring-size (buffer-ring-ring-ring bring))))))
