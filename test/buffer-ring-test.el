@@ -4,6 +4,12 @@
 ;; To run the tests from within Emacs, you must `eval-buffer` this test
 ;; buffer first. Then, run tests using `ert-run-tests-interactively`.
 
+;; Note: if you see "lisp nesting exceeds max-lisp-eval-depth"
+;; while running these tests, it could be that you have a duplicate
+;; "body" invocation within one of the nested fixtures. Since these
+;; are dynamically bound, every fixture needs to have a distinct
+;; name for the body argument.
+
 ;; Add source paths to load path so the tests can find the source files
 ;; Adapted from:
 ;; https://github.com/Lindydancer/cmake-font-lock/blob/47687b6ccd0e244691fb5907aaba609e5a42d787/test/cmake-font-lock-test-setup.el#L20-L27
@@ -40,20 +46,26 @@
 
 ;; fixture recipe from:
 ;; https://www.gnu.org/software/emacs/manual/html_node/ert/Fixtures-and-Test-Suites.html
-(defun fixture-0 (body)
+(defun fixture-buffers-A (body-buf-a)
+  (let* ((buffer nil))
+    (unwind-protect
+        (progn (setq buffer (generate-new-buffer bfr-test-name-prefix))
+               (funcall body-buf-a))
+      (kill-buffer buffer))))
+
+(defun fixture-0 (body-0)
   ;; no buffer rings present
   ;; an unaffiliated buffer
-  (let ((buffer nil))
-    (unwind-protect
-        (progn (setq buffer-ring-torus (dynaring-make))
-               (setq buffer-rings (ht))
-               (setq buffer (generate-new-buffer bfr-test-name-prefix))
-               (funcall body))
-      (kill-buffer buffer)
-      (let ((bring0 (buffer-ring-torus-get-ring bfr-new-ring-name)))
-        (when bring0
-          (dynaring-destroy (buffer-ring-ring-ring bring0))))
-      (dynaring-destroy buffer-ring-torus))))
+  (fixture-buffers-A
+   (lambda ()
+     (unwind-protect
+         (progn (setq buffer-ring-torus (dynaring-make))
+                (setq buffer-rings (ht))
+                (funcall body-0))
+       (let ((bring0 (buffer-ring-torus-get-ring bfr-new-ring-name)))
+         (when bring0
+           (dynaring-destroy (buffer-ring-ring-ring bring0))))
+       (dynaring-destroy buffer-ring-torus)))))
 
 (defun fixture-1-0 (body-10)
   ;; 1 empty buffer ring
@@ -116,13 +128,13 @@
      (buffer-ring--add-buffer-to-ring buffer bring1)
      (funcall body-20a))))
 
-(defun fixture-2-A-A (body2)
+(defun fixture-2-A-A (body-2aa)
   ;; 2 buffer rings: empty, 1 element
   ;; add a buffer to the empty ring
   (fixture-2-0-A
    (lambda ()
      (buffer-ring--add-buffer-to-ring buffer bring0)
-     (funcall body2))))
+     (funcall body-2aa))))
 
 (defun fixture-3-0-A-0 (body-30a0)
   ;; 3 buffer rings: empty, 1 element, empty
