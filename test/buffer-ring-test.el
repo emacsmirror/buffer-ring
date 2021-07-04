@@ -14,6 +14,9 @@
 ;;   and "invalid function nil . 0"
 ;;   then you probably are using a fixture without wrapping the body
 ;;   in a lambda
+;; - if there are errors in tests and you're left with a mess of unclosed
+;;   test buffers, use this to get rid of them:
+;;   (kill-matching-buffers (concat "^" fixture-buffer-name-prefix) nil t)
 
 ;; Add source paths to load path so the tests can find the source files
 ;; Adapted from:
