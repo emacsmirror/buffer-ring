@@ -317,12 +317,12 @@ necessary to correctly account for recency.
 
 _ARGS are the arguments that the advised function was invoked with."
   (let ((buffer (current-buffer))
-        (ring (buffer-ring-ring-ring (buffer-ring-current-ring)))
-        ;; if it's already at the head of the current ring,
-        ;; we probably arrived here via a buffer-ring interface
-        ;; and don't need to do anything in that case)
-        (unless (eq buffer (dynaring-value ring))
-          (buffer-ring-visit-buffer (current-buffer)))))
+        (ring (buffer-ring-ring-ring (buffer-ring-current-ring))))
+    ;; if it's already at the head of the current ring,
+    ;; we probably arrived here via a buffer-ring interface
+    ;; and don't need to do anything in that case
+    (unless (eq buffer (dynaring-value ring))
+      (buffer-ring-visit-buffer (current-buffer)))))
 
 (defun buffer-ring-surface-ring (&optional bfr-ring)
   "Make BFR-RING the most recent ring in all member buffers.
