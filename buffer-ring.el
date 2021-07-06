@@ -179,6 +179,17 @@ use a numeric operator."
     (with-current-buffer buffer
       (add-hook 'kill-buffer-hook #'buffer-ring-drop-buffer t t))))
 
+(defun buffer-ring--add (bfr-ring buffer)
+  "Add BUFFER to RING."
+  (let ((ring (buffer-ring-ring-ring bfr-ring))
+        (ring-name (buffer-ring-ring-name bfr-ring)))
+    (cond ((dynaring-contains-p ring buffer)
+           (message "buffer %s is already in ring \"%s\"" (buffer-name)
+                    ring-name)
+           nil)
+          (t (buffer-ring--add-buffer-to-ring buffer bfr-ring)
+             t))))
+
 (defun buffer-ring-add (ring-name &optional buffer)
   "Add the BUFFER to the ring with name RING-NAME.
 
@@ -192,18 +203,12 @@ is provided it assumes the current buffer."
                    nil
                    nil
                    default-name))))
-  (let* ((bfr-ring (buffer-ring-torus-get-ring ring-name))
-         (ring (buffer-ring-ring-ring bfr-ring))
-         (buffer (or buffer (current-buffer))))
-    (cond ((dynaring-contains-p ring buffer)
-           (message "buffer %s is already in ring \"%s\"" (buffer-name)
-                    ring-name)
-           ;; switch to the ring, all the same, for consistency
-           (buffer-ring-torus-switch-to-ring ring-name)
-           nil)
-          (t (buffer-ring--add-buffer-to-ring buffer bfr-ring)
-             (buffer-ring-torus-switch-to-ring ring-name)
-             t))))
+  (let ((bfr-ring (buffer-ring-torus-get-ring ring-name))
+        (buffer (or buffer (current-buffer))))
+    (let ((result (buffer-ring--add bfr-ring buffer)))
+      ;; switch to the ring in all cases, for consistency
+      (buffer-ring-torus-switch-to-ring ring-name)
+      result)))
 
 (defun buffer-ring-delete (&optional buffer)
   "Delete BUFFER from the current ring.
@@ -266,7 +271,7 @@ left) or `dynaring-rotate-right` (to rotate right)."
           (when (= 1 (dynaring-size ring))
             (message "There is only one buffer in the ring."))
           (funcall direction ring)
-          (switch-to-buffer (dynaring-value ring)))))))
+          (buffer-ring-switch-to-buffer (dynaring-value ring)))))))
 
 (defun buffer-ring-prev-buffer ()
   "Switch to the previous buffer in the buffer ring."
@@ -290,17 +295,18 @@ with such a switch occurring."
          (bfr-rings (buffer-ring-get-rings buffer)))
     ;; if the buffer isn't in any ring, we don't need to do anything
     (when bfr-rings
-      (let ((ring (buffer-ring-ring-ring (buffer-ring-current-ring))))
-        ;; if it's already at the head of the current ring,
-        ;; we don't need to do anything, and we probably
-        ;; arrived here via a buffer-ring interface
-        (unless (and (dynaring-contains-p ring buffer)
-                     (eq buffer (dynaring-value ring)))
-          (dolist (bring bfr-rings)
-            (dynaring-break-insert (buffer-ring-ring-ring bring)
-                                   buffer))
-          (buffer-ring-torus-switch-to-ring
-           (buffer-ring-ring-name (car bfr-rings))))))))
+      ;; ensure that the buffer is re(break)inserted
+      ;; in all of its associated rings
+      (dolist (bring bfr-rings)
+        (dynaring-break-insert (buffer-ring-ring-ring bring)
+                               buffer))
+      (let ((most-recent-ring (car bfr-rings)))
+        ;; switch to the most recent ring containing the buffer
+        (buffer-ring--torus-switch-to-ring
+         (buffer-ring-ring-name most-recent-ring))
+        ;; bring the buffer ring "to the surface" across all
+        ;; member buffers, as the most recent one
+        (buffer-ring-surface-ring most-recent-ring)))))
 
 (defun buffer-ring-set-buffer-context (&rest _args)
   "Keep buffer rings updated when buffers are visited.
@@ -310,7 +316,13 @@ function modifies the ring structure and switches the current ring if
 necessary to correctly account for recency.
 
 _ARGS are the arguments that the advised function was invoked with."
-  (buffer-ring-visit-buffer (current-buffer)))
+  (let ((buffer (current-buffer))
+        (ring (buffer-ring-ring-ring (buffer-ring-current-ring)))
+        ;; if it's already at the head of the current ring,
+        ;; we probably arrived here via a buffer-ring interface
+        ;; and don't need to do anything in that case)
+        (unless (eq buffer (dynaring-value ring))
+          (buffer-ring-visit-buffer (current-buffer)))))
 
 (defun buffer-ring-surface-ring (&optional bfr-ring)
   "Make BFR-RING the most recent ring in all member buffers.
@@ -352,11 +364,9 @@ The buffer-ring is returned."
       (message "Creating a new ring \"%s\"" name)
       (buffer-ring-torus--create-ring name))))
 
-(defun buffer-ring-torus-switch-to-ring (name)
+(defun buffer-ring--torus-switch-to-ring (name)
   "Switch to ring NAME."
-  (interactive "sSwitch to ring ? ")
-  (let ((buffer (current-buffer))
-        (segment (dynaring-find-forwards buffer-ring-torus
+  (let ((segment (dynaring-find-forwards buffer-ring-torus
                                          (lambda (r)
                                            (string= name
                                                     (buffer-ring-ring-name r))))))
@@ -365,7 +375,15 @@ The buffer-ring is returned."
         ;; switch to ring and reinsert it at the head
         (dynaring-break-insert buffer-ring-torus
                                bfr-ring)
-        (buffer-ring-torus--switch-ring bfr-ring buffer)))))
+        bfr-ring))))
+
+(defun buffer-ring-torus-switch-to-ring (name)
+  "Switch to ring NAME."
+  (interactive "sSwitch to ring ? ")
+  (let ((bfr-ring (buffer-ring--torus-switch-to-ring name)))
+    (when bfr-ring
+      (let ((buffer (current-buffer)))
+        (buffer-ring--torus-switch-ring-actions bfr-ring buffer)))))
 
 (defun buffer-ring-current-ring ()
   "Get the current (active) buffer ring."
@@ -385,7 +403,13 @@ The buffer-ring is returned."
   (let ((bfr-ring (or bfr-ring (buffer-ring-current-ring))))
     (dynaring-value (buffer-ring-ring-ring bfr-ring))))
 
-(defun buffer-ring-torus--switch-ring (bfr-ring buffer)
+(defun buffer-ring-switch-to-buffer (buffer)
+  "Switch to BUFFER while keeping rings consistent."
+  (switch-to-buffer buffer)
+  (buffer-ring-visit-buffer buffer)
+  buffer)
+
+(defun buffer-ring--torus-switch-ring-actions (bfr-ring buffer)
   "Perform any actions in connection with switching to a new ring.
 
 BFR-RING is the new ring switched to, and BUFFER is the original buffer."
@@ -397,9 +421,8 @@ BFR-RING is the new ring switched to, and BUFFER is the original buffer."
     ;; and reinsert it to account for recency
     (when (dynaring-contains-p ring buffer)
       (dynaring-break-insert ring buffer))
-    (switch-to-buffer
+    (buffer-ring-switch-to-buffer
      (buffer-ring-current-buffer bfr-ring))))
-
 
 (defun buffer-ring-torus--rotate (direction)
   "Rotate the buffer ring torus.
@@ -414,7 +437,7 @@ left) or `dynaring-rotate-right` (to rotate right)."
           ((= 1 (dynaring-size buffer-ring-torus))
            (message "There is only one buffer ring.")
            (unless (dynaring-empty-p (buffer-ring-ring-ring (buffer-ring-current-ring)))
-             (switch-to-buffer
+             (buffer-ring-switch-to-buffer
               (buffer-ring-current-buffer (buffer-ring-current-ring))))
            t)
           (t
@@ -429,7 +452,7 @@ left) or `dynaring-rotate-right` (to rotate right)."
                                                    (buffer-ring-ring-ring bfr-ring))))))
                (progn
                  (message "switching to ring %s" (buffer-ring-current-ring-name))
-                 (buffer-ring-torus--switch-ring (buffer-ring-current-ring) buffer))
+                 (buffer-ring--torus-switch-ring-actions (buffer-ring-current-ring) buffer))
              (message "All of the buffer rings are empty. Keeping the current ring position")
              nil)))))
 

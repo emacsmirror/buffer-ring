@@ -171,6 +171,18 @@
         (buffer-ring--add-buffer-to-ring buf-A r2)
         (funcall body-2aa))))))
 
+(defun fixture-2-AB-AC (body-2-ab-ac)
+  ;; 2 buffer rings, each with 2 buffers, AB and AC
+  (fixture-2
+   (lambda ()
+     (fixture-buffers-ABC
+      (lambda ()
+        (buffer-ring--add-buffer-to-ring buf-A r1)
+        (buffer-ring--add-buffer-to-ring buf-B r1)
+        (buffer-ring--add-buffer-to-ring buf-A r2)
+        (buffer-ring--add-buffer-to-ring buf-C r2)
+        (funcall body-2-ab-ac))))))
+
 (defun fixture-3 (body-3)
   ;; 3 buffer rings
   ;; [2] - 1 - 0 - [2]
@@ -269,6 +281,19 @@
         (buffer-ring--add-buffer-to-ring buf-B r3)
         (buffer-ring--add-buffer-to-ring buf-C r3)
         (funcall body-3-0-a-abc))))))
+
+(defun fixture-3-AB-BC-AC (body-3-ab-bc-ac)
+  (fixture-3
+   (lambda ()
+     (fixture-buffers-ABC
+      (lambda ()
+        (buffer-ring--add-buffer-to-ring buf-A r1)
+        (buffer-ring--add-buffer-to-ring buf-A r3)
+        (buffer-ring--add-buffer-to-ring buf-B r1)
+        (buffer-ring--add-buffer-to-ring buf-B r2)
+        (buffer-ring--add-buffer-to-ring buf-C r2)
+        (buffer-ring--add-buffer-to-ring buf-C r3)
+        (funcall body-3-ab-bc-ac))))))
 
 ;;
 ;; Test utilities
@@ -1097,6 +1122,7 @@
   ;; if buffer is in a different ring, current ring is changed
   ;; and it is placed at the head
   (fixture-3-0-A-BC
+   ;; initial ring is r3
    (lambda ()
      (with-current-buffer buf-A
        (buffer-ring-set-buffer-context)
@@ -1123,28 +1149,93 @@
 ;;
 
 (ert-deftest buffer-ring-switching-buffers-and-rings-test ()
-  (fixture-3-0-A-ABC
+  (fixture-3-AB-BC-AC
+   ;; switching to a ring causes all of its buffers to show that
+   ;; ring as most recent, even if the last time those buffers were
+   ;; active was on another ring
    (lambda ()
      (buffer-ring-initialize)
-     (let ((r4 (buffer-ring-torus-get-ring "new-ring"))
-           (new-buf (generate-new-buffer fixture-buffer-name-prefix)))
-       (unwind-protect
-           (with-current-buffer new-buf
-             (buffer-ring-add "new-ring" new-buf)
-             (should (eq r4 (buffer-ring-current-ring)))
-             ;; switch to buf-B in r3 so it's at head
-             (switch-to-buffer buf-B)
-             ;; switch to r2, buf-A now points to r2
-             (buffer-ring-torus-switch-to-ring fixture-ring-2-name)
-             (should (eq r2 (car (buffer-ring-get-rings buf-A))))
-             ;; then switch to the new buffer in r4
-             (switch-to-buffer new-buf)
-             (should (eq r4 (buffer-ring-current-ring)))
-             ;; then switch to r3 which should set buffer to buf-B
-             (buffer-ring-torus-switch-to-ring fixture-ring-3-name)
-             (should (eq buf-B (current-buffer)))
-             ;; ensure that buf-A (not active but in ring) points to r3
-             (should (eq r3 (car (buffer-ring-get-rings buf-A)))))
-         (kill-buffer new-buf)
-         (dynaring-destroy (buffer-ring-ring-ring r4))))
+     (buffer-ring-torus-switch-to-ring fixture-ring-2-name)
+     ;; towards "the last time we visited B was on ring 2"
+     (switch-to-buffer buf-B)
+     ;; rotate to C to ensure we remain on C when we switch
+     ;; to r3
+     (buffer-ring-next-buffer)
+     (buffer-ring-torus-switch-to-ring fixture-ring-3-name)
+     ;; now switch to A, which should position it at head
+     ;; on both r3 and r1
+     (switch-to-buffer buf-A)
+     ;; switch ring to r1
+     (buffer-ring-torus-switch-to-ring fixture-ring-1-name)
+     ;; verify that we are on A
+     (should (eq buf-A (current-buffer)))
+     ;; the last time we visited B was on ring 2, yet
+     ;; r1 should now reflect as most recent ring on it
+     (should (eq r1 (car (buffer-ring-get-rings buf-A))))
+     (should (eq r1 (car (buffer-ring-get-rings buf-B))))))
+
+  (fixture-3-AB-BC-AC
+   ;; switching to a buffer causes it to be at the head of all
+   ;; of its rings
+   (lambda ()
+     (buffer-ring-initialize)
+     ;; go to buf-B on r2
+     (buffer-ring-torus-switch-to-ring fixture-ring-2-name)
+     (switch-to-buffer buf-B)
+     ;; rotate to C to ensure that B isn't at head on r2
+     (buffer-ring-next-buffer)
+     ;; switch to r3, we should be on C
+     (buffer-ring-torus-switch-to-ring fixture-ring-3-name)
+     ;; rotate to A
+     (buffer-ring-next-buffer)
+     ;; switch to r1, we should remain on A
+     (buffer-ring-torus-switch-to-ring fixture-ring-1-name)
+     ;; now switch to B, which should position it at head
+     ;; on both r1 and r2
+     (switch-to-buffer buf-B)
+     ;; ring 2 last had C at head
+     ;; but it should now reflect B
+     (should (eq buf-B (buffer-ring-current-buffer r1)))
+     (should (eq buf-B (buffer-ring-current-buffer r2)))))
+
+  (fixture-3-AB-BC-AC
+   ;; switching to a buffer causes its most recent ring to reflect as
+   ;; most recent in all buffers associated with that ring
+   (lambda ()
+     (buffer-ring-initialize)
+     ;; go to buf-B on r2
+     (buffer-ring-torus-switch-to-ring fixture-ring-2-name)
+     (switch-to-buffer buf-B)
+     ;; rotate to C to ensure that B isn't at head on r2
+     (buffer-ring-next-buffer)
+     ;; switch to r3, we should be on C
+     (buffer-ring-torus-switch-to-ring fixture-ring-3-name)
+     ;; rotate to A
+     (buffer-ring-next-buffer)
+     ;; switch to r1, which should keep us on A
+     (buffer-ring-torus-switch-to-ring fixture-ring-1-name)
+     ;; r1 should show as most recent ring for both A and B
+     ;; even though we most recently visited B on r2
+     (should (eq buf-A (current-buffer)))
+     (should (eq r1 (car (buffer-ring-get-rings buf-A))))
+     (should (eq r1 (car (buffer-ring-get-rings buf-B)))))))
+
+(ert-deftest buffer-ring-buffer-is-visited-test ()
+  (fixture-2-AB-AC
+   ;; rotating the ring ensures that the new head buffer
+   ;; is at the head of all rings that it is part of
+   (lambda ()
+     (buffer-ring-initialize)
+     ;; switch to B and C in the rings
+     ;; then switch to A in one by rotating.
+     ;; without switching to the other ring,
+     ;; check that A is at its head
+     (buffer-ring-torus-switch-to-ring fixture-ring-1-name)
+     (switch-to-buffer buf-B)
+     (buffer-ring-torus-switch-to-ring fixture-ring-2-name)
+     (switch-to-buffer buf-C)
+
+     (buffer-ring-next-buffer)
+     (should (eq buf-A (buffer-ring-current-buffer r1)))
+     (should (eq buf-A (buffer-ring-current-buffer r2)))
      (buffer-ring-disable))))
