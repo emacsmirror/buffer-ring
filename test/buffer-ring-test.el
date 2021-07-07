@@ -415,6 +415,13 @@
                                   buf-A))))
   (fixture-1-0+A
    (lambda ()
+     ;; interface accepts buffer name as string
+     (buffer-ring-add (buffer-ring-ring-name r1)
+                      (buffer-name buf-A))
+     (should (dynaring-contains-p (buffer-ring-ring-ring (buffer-ring-current-ring))
+                                  buf-A))))
+  (fixture-1-0+A
+   (lambda ()
      (buffer-ring-add (buffer-ring-ring-name r1)
                       buf-A)
      (should (= 1 (buffer-ring-size)))))

@@ -115,9 +115,21 @@ An accessor for the dynamic ring component of the BUFFER-RING."
   "Key to use for BUFFER in the buffer registry."
   (buffer-name buffer))
 
+(defun buffer-ring--parse-buffer (buffer)
+  "Extract the buffer object indicated by BUFFER.
+
+BUFFER could be either be the name of the buffer (a string)
+or a buffer object, or nil. In the last case, this evaluates to
+the current buffer."
+  (if buffer
+      (if (bufferp buffer)
+          buffer
+        (get-buffer buffer))
+    (current-buffer)))
+
 (defun buffer-ring-get-rings (&optional buffer)
   "All rings that BUFFER is part of."
-  (let* ((buffer (or buffer (current-buffer)))
+  (let* ((buffer (buffer-ring--parse-buffer buffer))
          (ring-names (ht-get buffer-rings
                              (buffer-ring-registry-get-key buffer))))
     (seq-map #'buffer-ring-torus--find-ring ring-names)))
@@ -180,7 +192,7 @@ use a numeric operator."
       (add-hook 'kill-buffer-hook #'buffer-ring-drop-buffer t t))))
 
 (defun buffer-ring--add (bfr-ring buffer)
-  "Add BUFFER to RING."
+  "Add BUFFER to BFR-RING."
   (let ((ring (buffer-ring-ring-ring bfr-ring))
         (ring-name (buffer-ring-ring-name bfr-ring)))
     (cond ((dynaring-contains-p ring buffer)
@@ -204,7 +216,7 @@ is provided it assumes the current buffer."
                    nil
                    default-name))))
   (let ((bfr-ring (buffer-ring-torus-get-ring ring-name))
-        (buffer (or buffer (current-buffer))))
+        (buffer (buffer-ring--parse-buffer buffer)))
     (let ((result (buffer-ring--add bfr-ring buffer)))
       ;; switch to the ring in all cases, for consistency
       (buffer-ring-torus-switch-to-ring ring-name)
@@ -217,7 +229,7 @@ If no buffer is specified, it assumes the current buffer.
 
 This modifies the ring, it does not kill the buffer."
   (interactive)
-  (let ((buffer (or buffer (current-buffer))))
+  (let ((buffer (buffer-ring--parse-buffer buffer)))
     (if (buffer-ring-current-ring)
         (let ((ring (buffer-ring-ring-ring (buffer-ring-current-ring))))
           (if (dynaring-delete ring buffer)
@@ -291,7 +303,7 @@ switches the current ring to be the most recent one containing
 the buffer. Note that this does not actually switch to the
 buffer in question, but is likely to be called in connection
 with such a switch occurring."
-  (let* ((buffer (current-buffer))
+  (let* ((buffer (buffer-ring--parse-buffer buffer))
          (bfr-rings (buffer-ring-get-rings buffer)))
     ;; if the buffer isn't in any ring, we don't need to do anything
     (when bfr-rings
