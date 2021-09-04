@@ -75,12 +75,18 @@
   ;; TODO: should this be buffer-local? in that case it can
   ;; be added at the time that the buffer is adding to a ring
   (advice-add 'switch-to-buffer
-              :after #'buffer-ring-synchronize-buffer))
+              :after #'buffer-ring-synchronize-buffer)
+  (advice-add 'bury-buffer
+              :before #'buffer-ring-bury-buffer)
+  (advice-add 'quit-window
+              :before #'buffer-ring-bury-buffer))
 
 (defun buffer-ring-disable ()
   "Remove hooks, etc."
   (interactive)
-  (advice-remove 'switch-to-buffer #'buffer-ring-synchronize-buffer))
+  (advice-remove 'switch-to-buffer #'buffer-ring-synchronize-buffer)
+  (advice-remove 'bury-buffer #'buffer-ring-bury-buffer)
+  (advice-remove 'quit-window #'buffer-ring-bury-buffer))
 
 ;;
 ;;  buffer ring structure
@@ -119,7 +125,7 @@ An accessor for the dynamic ring component of the BUFFER-RING."
   "Extract the buffer object indicated by BUFFER.
 
 BUFFER could be either be the name of the buffer (a string)
-or a buffer object, or nil. In the last case, this evaluates to
+or a buffer object, or nil.  In the last case, this evaluates to
 the current buffer."
   (if buffer
       (if (bufferp buffer)
@@ -294,6 +300,22 @@ left) or `dynaring-rotate-right` (to rotate right)."
   (interactive)
   (buffer-ring--rotate #'dynaring-rotate-right))
 
+(defun buffer-ring-bury-buffer (&optional buffer)
+  "An advice function to move a buffer to the back of the ring.
+
+When BUFFER is buried (e.g. via `q` on a popup window), this ensures
+that all rings containing it move it to the \"back\" of the ring, in
+terms of recency."
+  (let* ((buffer (buffer-ring--parse-buffer buffer))
+         (bfr-rings (buffer-ring-get-rings buffer)))
+    ;; if it isn't part of any rings, we don't need
+    ;; to do anything
+    (when bfr-rings
+      (dolist (bring bfr-rings)
+        (let ((ring (buffer-ring-ring-ring bring)))
+          (dynaring-break-insert ring buffer)
+          (dynaring-rotate-right ring))))))
+
 (defun buffer-ring-synchronize-buffer (&rest _args)
   "Keep buffer rings updated when buffers are visited.
 
@@ -329,7 +351,7 @@ ring recency is consistent across the board."
 (defun buffer-ring-surface-buffer (&optional buffer)
   "Ensure the buffer is at head position in all rings of which it is a member.
 
-We'd want to do this each time the buffer becomes current, so that
+We'd want to do this each time the BUFFER becomes current, so that
 buffer recency is consistent across the board."
   (let ((buffer (buffer-ring--parse-buffer buffer))
         (bfr-rings (buffer-ring-get-rings buffer)))
@@ -423,7 +445,7 @@ the change of ring (that should be done alongside)."
   "Perform any actions in connection with switching to a new ring.
 
 At the moment, this switches to the head buffer in BFR-RING
-(the new ring), and surfaces that ring in all of its member
+\(the new ring), and surfaces that ring in all of its member
 buffers."
   ;; Switch to the head buffer in the new ring.
   (let ((head-buffer (buffer-ring-current-buffer bfr-ring)))
