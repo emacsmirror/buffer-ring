@@ -774,6 +774,31 @@
              (funcall sut)))
      (should (eq (current-buffer) buf-C)))))
 
+(ert-deftest buffer-ring-rotate-to-buffer-test ()
+
+  (setq sut #'buffer-ring-rotate-to-buffer)
+
+  ;; rotating to head does nothing
+  (fixture-1-ABC
+   (lambda ()
+     (should (funcall sut buf-C))
+     (should (eq (current-buffer) buf-C))
+     (should (equal (dynaring-values (buffer-ring-ring-ring (buffer-ring-current-ring))) (list buf-A buf-B buf-C)))))
+
+  ;; rotating to another buffer preserves the order ...
+  (fixture-1-ABC
+   (lambda ()
+     (should (funcall sut buf-A))
+     (should (eq (current-buffer) buf-A))
+     (should (equal (dynaring-values (buffer-ring-ring-ring (buffer-ring-current-ring))) (list buf-B buf-C buf-A)))))
+
+  ;; ... wherever that buffer may be on the ring
+  (fixture-1-ABC
+   (lambda ()
+     (should (funcall sut buf-B))
+     (should (eq (current-buffer) buf-B))
+     (should (equal (dynaring-values (buffer-ring-ring-ring (buffer-ring-current-ring))) (list buf-C buf-A buf-B))))))
+
 (ert-deftest buffer-ring-torus-next-ring-test ()
 
   (setq sut #'buffer-ring-torus-next-ring)

@@ -300,6 +300,20 @@ left) or `dynaring-rotate-right` (to rotate right)."
   (interactive)
   (buffer-ring--rotate #'dynaring-rotate-right))
 
+(defun buffer-ring-rotate-to-buffer (buffer)
+  "Rotate the buffer ring until BUFFER is at head.
+
+This differs from simply switching to the buffer in that the latter
+results in a change in ordering while the present action preserves the
+current ordering of buffers in the ring."
+  (interactive)
+  (let ((buffer (buffer-ring--parse-buffer buffer))
+        (ring (buffer-ring-ring-ring (buffer-ring-current-ring))))
+    (dynaring-rotate-until ring
+                           #'dynaring-rotate-left
+                           (lambda (buf) (eq buf buffer)))
+    (buffer-ring-switch-to-buffer (dynaring-value ring))))
+
 (defun buffer-ring-bury-buffer (&optional buffer)
   "An advice function to move a buffer to the back of the ring.
 
