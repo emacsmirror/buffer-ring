@@ -5,7 +5,7 @@
 ;; Maintainer: Sid Kasivajhula <sid@countvajhula.com>
 ;; URL: https://github.com/countvajhula/buffer-ring
 ;; Created: 2009-4-16
-;; Version: 0.2
+;; Version: 0.3
 ;; Package-Requires: ((emacs "25.1") (dynaring "0.3") (s "1.12.0") (ht "2.0"))
 
 ;; This file is NOT a part of Gnu Emacs.
@@ -31,7 +31,7 @@
 
 ;;; Code:
 
-(defconst buffer-ring-version "0.2")
+(defconst buffer-ring-version "0.3")
 (require 'dynaring)
 (require 's)
 (require 'ht)
