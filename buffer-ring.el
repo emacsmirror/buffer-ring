@@ -79,14 +79,25 @@
   (advice-add 'bury-buffer
               :before #'buffer-ring-bury-buffer)
   (advice-add 'quit-window
-              :before #'buffer-ring-bury-buffer))
+              :before #'buffer-ring-bury-buffer)
+  ;; after we bury a buffer, we may arrive at some arbitrary buffer.
+  ;; as this happens "out of band" wrt the buffer ring interfaces,
+  ;; we need to explicitly synchronize this arrival buffer with its
+  ;; buffer rings, just like in the case of a direct visit to that
+  ;; buffer via switch-to-buffer.
+  (advice-add 'bury-buffer
+              :after #'buffer-ring-synchronize-buffer)
+  (advice-add 'quit-window
+              :after #'buffer-ring-synchronize-buffer))
 
 (defun buffer-ring-disable ()
   "Remove hooks, etc."
   (interactive)
   (advice-remove 'switch-to-buffer #'buffer-ring-synchronize-buffer)
   (advice-remove 'bury-buffer #'buffer-ring-bury-buffer)
-  (advice-remove 'quit-window #'buffer-ring-bury-buffer))
+  (advice-remove 'quit-window #'buffer-ring-bury-buffer)
+  (advice-remove 'bury-buffer #'buffer-ring-synchronize-buffer)
+  (advice-remove 'quit-window #'buffer-ring-synchronize-buffer))
 
 ;;
 ;;  buffer ring structure
@@ -334,8 +345,9 @@ terms of recency."
   "Keep buffer rings updated when buffers are visited.
 
 When a buffer is visited directly without rotating to it, this advice
-function modifies the ring structure and switches the current ring if
-necessary to correctly account for recency.
+function switches to the most recent ring (if any) containing the buffer,
+promoting both the ring as well as the buffer to the head position in
+their containing rings, while accounting for recency.
 
 _ARGS are the arguments that the advised function was invoked with."
   (let ((buffer (current-buffer))
