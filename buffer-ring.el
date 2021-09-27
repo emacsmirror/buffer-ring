@@ -61,7 +61,10 @@
     (define-key buffer-ring-map (kbd "C-c C-b p") #'buffer-ring-torus-prev-ring)
     (define-key buffer-ring-map (kbd "C-c C-b e") #'buffer-ring-torus-delete-ring)
 
-    buffer-ring-map))
+    buffer-ring-map)
+  (if buffer-ring-mode
+      (buffer-ring-initialize)
+    (buffer-ring-disable)))
 
 (defvar buffer-ring-torus (dynaring-make)
   "A global ring of all the buffer rings.  A torus I believe.")
