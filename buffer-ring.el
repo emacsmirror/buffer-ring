@@ -5,7 +5,7 @@
 ;; Maintainer: Sid Kasivajhula <sid@countvajhula.com>
 ;; URL: https://github.com/countvajhula/buffer-ring
 ;; Created: 2009-4-16
-;; Version: 0.3.2
+;; Version: 0.3.3
 ;; Package-Requires: ((emacs "25.1") (dynaring "0.3") (s "1.12.0") (ht "2.0"))
 
 ;; This file is NOT a part of Gnu Emacs.
@@ -31,7 +31,7 @@
 
 ;;; Code:
 
-(defconst buffer-ring-version "0.3.2")
+(defconst buffer-ring-version "0.3.3")
 (require 'dynaring)
 (require 's)
 (require 'ht)
@@ -77,7 +77,7 @@
   ;; or maybe find-file-hook in addition here
   ;; TODO: should this be buffer-local? in that case it can
   ;; be added at the time that the buffer is adding to a ring
-  (advice-add 'switch-to-buffer
+  (advice-add 'set-buffer
               :after #'buffer-ring-synchronize-buffer)
   (advice-add 'bury-buffer
               :before #'buffer-ring-bury-buffer)
@@ -96,7 +96,7 @@
 (defun buffer-ring-disable ()
   "Remove hooks, etc."
   (interactive)
-  (advice-remove 'switch-to-buffer #'buffer-ring-synchronize-buffer)
+  (advice-remove 'set-buffer #'buffer-ring-synchronize-buffer)
   (advice-remove 'bury-buffer #'buffer-ring-bury-buffer)
   (advice-remove 'quit-window #'buffer-ring-bury-buffer)
   (advice-remove 'bury-buffer #'buffer-ring-synchronize-buffer)
