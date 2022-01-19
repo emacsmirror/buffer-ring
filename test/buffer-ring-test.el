@@ -304,7 +304,30 @@
 ;; Test utilities
 ;;
 
+(defmacro br-define-test-suite (name docstring &rest body)
+  "Define a test suite."
+  ;; for now, just rewrite to the existing code,
+  ;; but later, rewrite to individual tests and ignore the
+  ;; "suite" abstraction
+  (declare (indent 1))
+  `(ert-deftest name ()
+     ,docstring
+     ,@body))
 
+(defmacro br-define-test (name docstring fixture &rest body)
+  "Define a unit test."
+  (declare (indent 1))
+  `(,fixture
+    (lambda ()
+      ,@body)))
+
+(defmacro br-define-integration-test (name docstring fixture &rest body)
+  "Define an integration test."
+  `(,fixture
+    (lambda ()
+      (buffer-ring-initialize)
+      ,@body
+      (buffer-ring-disable))))
 
 ;;
 ;; Tests
