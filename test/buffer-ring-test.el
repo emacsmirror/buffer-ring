@@ -53,7 +53,8 @@
 (defun fixture-buffers-A (body-buf-a)
   (let* ((buf-A nil))
     (unwind-protect
-        (progn (setq buf-A (generate-new-buffer fixture-buffer-name-prefix))
+        (progn (setq buf-A (generate-new-buffer
+                            (concat fixture-buffer-name-prefix "-" "A")))
                (funcall body-buf-a))
       (kill-buffer buf-A))))
 
@@ -62,7 +63,8 @@
    (lambda ()
      (let ((buf-B nil))
        (unwind-protect
-           (progn (setq buf-B (generate-new-buffer fixture-buffer-name-prefix))
+           (progn (setq buf-B (generate-new-buffer
+                               (concat fixture-buffer-name-prefix "-" "B")))
                   (funcall body-buf-ab))
          (kill-buffer buf-B))))))
 
@@ -71,7 +73,8 @@
    (lambda ()
      (let ((buf-C nil))
        (unwind-protect
-           (progn (setq buf-C (generate-new-buffer fixture-buffer-name-prefix))
+           (progn (setq buf-C (generate-new-buffer
+                               (concat fixture-buffer-name-prefix "-" "C")))
                   (funcall body-buf-abc))
          (kill-buffer buf-C))))))
 
