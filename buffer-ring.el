@@ -82,7 +82,7 @@
   (advice-add 'bury-buffer
               :before #'buffer-ring-bury-buffer)
   (advice-add 'quit-window
-              :before #'buffer-ring-bury-buffer)
+              :before #'buffer-ring--bury-window-buffer)
   ;; after we bury a buffer, we may arrive at some arbitrary buffer.
   ;; as this happens "out of band" wrt the buffer ring interfaces,
   ;; we need to explicitly synchronize this arrival buffer with its
@@ -98,7 +98,7 @@
   (interactive)
   (advice-remove 'set-buffer #'buffer-ring-synchronize-buffer)
   (advice-remove 'bury-buffer #'buffer-ring-bury-buffer)
-  (advice-remove 'quit-window #'buffer-ring-bury-buffer)
+  (advice-remove 'quit-window #'buffer-ring--bury-window-buffer)
   (advice-remove 'bury-buffer #'buffer-ring-synchronize-buffer)
   (advice-remove 'quit-window #'buffer-ring-synchronize-buffer))
 
@@ -327,6 +327,14 @@ current ordering of buffers in the ring."
                            #'dynaring-rotate-left
                            (lambda (buf) (eq buf buffer)))
     (buffer-ring-switch-to-buffer (dynaring-value ring))))
+
+(defun buffer-ring--bury-window-buffer (&optional _kill window)
+  "An advice function to move a buffer to the back of the ring.
+
+This simply adapts the `buffer-ring-bury-buffer` advice function to
+the `quit-window` interface."
+  (let ((buffer (window-buffer (window-normalize-window window))))
+    (buffer-ring-bury-buffer buffer)))
 
 (defun buffer-ring-bury-buffer (&optional buffer)
   "An advice function to move a buffer to the back of the ring.
