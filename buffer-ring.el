@@ -335,7 +335,8 @@ current ordering of buffers in the ring."
   "An advice function to move a buffer to the back of the ring.
 
 This simply adapts the `buffer-ring-bury-buffer` advice function to
-the `quit-window` interface."
+the `quit-window` interface, so that quiting a WINDOW buries the
+associated buffer."
   (let ((buffer (window-buffer (window-normalize-window window))))
     (buffer-ring-bury-buffer buffer)))
 
