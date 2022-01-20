@@ -77,7 +77,9 @@
   ;; or maybe find-file-hook in addition here
   ;; TODO: should this be buffer-local? in that case it can
   ;; be added at the time that the buffer is adding to a ring
-  (advice-add 'set-buffer
+  (advice-add 'switch-to-buffer
+              :after #'buffer-ring-synchronize-buffer)
+  (advice-add 'pop-to-buffer
               :after #'buffer-ring-synchronize-buffer)
   (advice-add 'bury-buffer
               :before #'buffer-ring-bury-buffer)
@@ -96,7 +98,8 @@
 (defun buffer-ring-disable ()
   "Remove hooks, etc."
   (interactive)
-  (advice-remove 'set-buffer #'buffer-ring-synchronize-buffer)
+  (advice-remove 'switch-to-buffer #'buffer-ring-synchronize-buffer)
+  (advice-remove 'pop-to-buffer #'buffer-ring-synchronize-buffer)
   (advice-remove 'bury-buffer #'buffer-ring-bury-buffer)
   (advice-remove 'quit-window #'buffer-ring--bury-window-buffer)
   (advice-remove 'bury-buffer #'buffer-ring-synchronize-buffer)
