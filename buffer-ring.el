@@ -130,7 +130,7 @@ An accessor for the dynamic ring component of the BUFFER-RING."
 ;; buffer rings registry
 ;;
 ;; TODO: use buffer local variables instead?
-(defvar buffer-rings
+(defvar buffer-ring-rings
   (ht)
   "Buffer to rings hash.")
 
@@ -153,7 +153,7 @@ the current buffer."
 (defun buffer-ring-get-rings (&optional buffer)
   "All rings that BUFFER is part of."
   (let* ((buffer (buffer-ring--parse-buffer buffer))
-         (ring-names (ht-get buffer-rings
+         (ring-names (ht-get buffer-ring-rings
                              (buffer-ring-registry-get-key buffer))))
     (seq-map #'buffer-ring-torus--find-ring ring-names)))
 
@@ -161,11 +161,11 @@ the current buffer."
   "Register that BUFFER has been added to BFR-RING."
   (let ((key (buffer-ring-registry-get-key buffer))
         (ring-name (buffer-ring-ring-name bfr-ring)))
-    (ht-set! buffer-rings
+    (ht-set! buffer-ring-rings
              key
              (delete-dups
               (cons ring-name
-                    (ht-get buffer-rings
+                    (ht-get buffer-ring-rings
                             key))))))
 
 (defun buffer-ring-registry-delete-ring (buffer bfr-ring)
@@ -176,10 +176,10 @@ identifier from the buffer.  It should only be called either
 as part of doing the former or when deleting the ring entirely."
   (let ((key (buffer-ring-registry-get-key buffer))
         (ring-name (buffer-ring-ring-name bfr-ring)))
-    (ht-set! buffer-rings
+    (ht-set! buffer-ring-rings
              key
              (remq ring-name
-                   (ht-get buffer-rings
+                   (ht-get buffer-ring-rings
                            key)))))
 
 (defun buffer-ring-registry-drop-ring (bfr-ring)
@@ -278,7 +278,7 @@ to the koala buffer."
         (buffer-ring-torus-switch-to-ring (buffer-ring-ring-name bfr-ring))
         (buffer-ring-delete buffer)))
     ;; remove the buffer from the buffer ring registry
-    (ht-remove! buffer-rings (buffer-ring-registry-get-key buffer))
+    (ht-remove! buffer-ring-rings (buffer-ring-registry-get-key buffer))
     (remove-hook 'kill-buffer-hook #'buffer-ring-drop-buffer t)))
 
 (defun buffer-ring-list-buffers ()
