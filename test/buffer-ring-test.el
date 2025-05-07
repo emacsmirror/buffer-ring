@@ -50,6 +50,14 @@
 
 ;; fixture recipe from:
 ;; https://www.gnu.org/software/emacs/manual/html_node/ert/Fixtures-and-Test-Suites.html
+
+(defmacro with-fixture (fixture &rest test)
+  "Run TEST using FIXTURE."
+  (declare (indent 1))
+  `(,fixture
+    (lambda ()
+      ,@test)))
+
 (defun fixture-buffers-A (body-buf-a)
   (let* ((buf-A nil))
     (unwind-protect
@@ -59,24 +67,22 @@
       (kill-buffer buf-A))))
 
 (defun fixture-buffers-AB (body-buf-ab)
-  (fixture-buffers-A
-   (lambda ()
-     (let ((buf-B nil))
-       (unwind-protect
-           (progn (setq buf-B (generate-new-buffer
-                               (concat fixture-buffer-name-prefix "-" "B")))
-                  (funcall body-buf-ab))
-         (kill-buffer buf-B))))))
+  (with-fixture fixture-buffers-A
+    (let ((buf-B nil))
+      (unwind-protect
+          (progn (setq buf-B (generate-new-buffer
+                              (concat fixture-buffer-name-prefix "-" "B")))
+                 (funcall body-buf-ab))
+        (kill-buffer buf-B)))))
 
 (defun fixture-buffers-ABC (body-buf-abc)
-  (fixture-buffers-AB
-   (lambda ()
-     (let ((buf-C nil))
-       (unwind-protect
-           (progn (setq buf-C (generate-new-buffer
-                               (concat fixture-buffer-name-prefix "-" "C")))
-                  (funcall body-buf-abc))
-         (kill-buffer buf-C))))))
+  (with-fixture fixture-buffers-AB
+    (let ((buf-C nil))
+      (unwind-protect
+          (progn (setq buf-C (generate-new-buffer
+                              (concat fixture-buffer-name-prefix "-" "C")))
+                 (funcall body-buf-abc))
+        (kill-buffer buf-C)))))
 
 (defun fixture-0 (body-0)
   ;; no buffer rings present
@@ -92,213 +98,178 @@
 (defun fixture-0+A (body-0+a)
   ;; no buffer rings present
   ;; an unaffiliated buffer
-  (fixture-0
-   (lambda ()
-     (fixture-buffers-A
-      (lambda ()
-        (funcall body-0+a))))))
+  (with-fixture fixture-0
+    (with-fixture fixture-buffers-A
+      (funcall body-0+a))))
 
 (defun fixture-1 (body-1)
   ;; 1 empty buffer ring
   ;; an unaffiliated buffer
-  (fixture-0
-   (lambda ()
-     (let ((r1 nil))
-       (unwind-protect
-           (progn (setq r1 (buffer-ring-torus-get-ring fixture-ring-1-name))
-                  (funcall body-1))
-         (dynaring-destroy (buffer-ring-ring-ring r1)))))))
+  (with-fixture fixture-0
+    (let ((r1 nil))
+      (unwind-protect
+          (progn (setq r1 (buffer-ring-torus-get-ring fixture-ring-1-name))
+                 (funcall body-1))
+        (dynaring-destroy (buffer-ring-ring-ring r1))))))
 
 (defun fixture-1-0+A (body-10+a)
   ;; 1 empty buffer ring
   ;; an unaffiliated buffer
-  (fixture-1
-   (lambda ()
-     (fixture-buffers-A
-      (lambda ()
-        (funcall body-10+a))))))
+  (with-fixture fixture-1
+    (with-fixture fixture-buffers-A
+      (funcall body-10+a))))
 
 (defun fixture-1-A (body-1a)
-  (fixture-1
-   (lambda ()
-     (fixture-buffers-A
-      (lambda ()
-        (buffer-ring--add buf-A r1)
-        (funcall body-1a))))))
+  (with-fixture fixture-1
+    (with-fixture fixture-buffers-A
+      (buffer-ring--add buf-A r1)
+      (funcall body-1a))))
 
 (defun fixture-1-AB (body-1ab)
-  (fixture-1
-   (lambda ()
-     (fixture-buffers-AB
-      (lambda ()
-        (buffer-ring--add buf-A r1)
-        (buffer-ring--add buf-B r1)
-        (funcall body-1ab))))))
+  (with-fixture fixture-1
+    (with-fixture fixture-buffers-AB
+      (buffer-ring--add buf-A r1)
+      (buffer-ring--add buf-B r1)
+      (funcall body-1ab))))
 
 (defun fixture-1-ABC (body-1abc)
-  (fixture-1
-   (lambda ()
-     (fixture-buffers-ABC
-      (lambda ()
-        (buffer-ring--add buf-A r1)
-        (buffer-ring--add buf-B r1)
-        (buffer-ring--add buf-C r1)
-        (funcall body-1abc))))))
+  (with-fixture fixture-1
+    (with-fixture fixture-buffers-ABC
+      (buffer-ring--add buf-A r1)
+      (buffer-ring--add buf-B r1)
+      (buffer-ring--add buf-C r1)
+      (funcall body-1abc))))
 
 (defun fixture-2 (body-2)
   ;; 2 buffer rings: both empty
-  (fixture-1
-   (lambda ()
-     (let ((r2 nil))
-       (unwind-protect
-           (progn
-             (setq r2 (buffer-ring-torus-get-ring fixture-ring-2-name))
-             (funcall body-2))
-         (dynaring-destroy (buffer-ring-ring-ring r2)))))))
+  (with-fixture fixture-1
+    (let ((r2 nil))
+      (unwind-protect
+          (progn
+            (setq r2 (buffer-ring-torus-get-ring fixture-ring-2-name))
+            (funcall body-2))
+        (dynaring-destroy (buffer-ring-ring-ring r2))))))
 
 (defun fixture-2-0-A (body-20a)
   ;; 2 buffer rings: empty, 1 element
-  (fixture-2
-   (lambda ()
-     (fixture-buffers-A
-      (lambda ()
-        (buffer-ring--add buf-A r2)
-        (funcall body-20a))))))
+  (with-fixture fixture-2
+    (with-fixture fixture-buffers-A
+      (buffer-ring--add buf-A r2)
+      (funcall body-20a))))
 
 (defun fixture-2-A-A (body-2aa)
   ;; 2 buffer rings: empty, 1 element
   ;; add a buffer to the empty ring
-  (fixture-2
-   (lambda ()
-     (fixture-buffers-A
-      (lambda ()
-        (buffer-ring--add buf-A r1)
-        (buffer-ring--add buf-A r2)
-        (funcall body-2aa))))))
+  (with-fixture fixture-2
+    (with-fixture fixture-buffers-A
+      (buffer-ring--add buf-A r1)
+      (buffer-ring--add buf-A r2)
+      (funcall body-2aa))))
 
 (defun fixture-2-AB-AC (body-2-ab-ac)
   ;; 2 buffer rings, each with 2 buffers, AB and AC
-  (fixture-2
-   (lambda ()
-     (fixture-buffers-ABC
-      (lambda ()
-        (buffer-ring--add buf-A r1)
-        (buffer-ring--add buf-B r1)
-        (buffer-ring--add buf-A r2)
-        (buffer-ring--add buf-C r2)
-        (funcall body-2-ab-ac))))))
+  (with-fixture fixture-2
+    (with-fixture fixture-buffers-ABC
+      (buffer-ring--add buf-A r1)
+      (buffer-ring--add buf-B r1)
+      (buffer-ring--add buf-A r2)
+      (buffer-ring--add buf-C r2)
+      (funcall body-2-ab-ac))))
 
 (defun fixture-3 (body-3)
   ;; 3 buffer rings
   ;; [2] - 1 - 0 - [2]
-  (fixture-2
-   (lambda ()
-     (let ((r3 nil))
-       (unwind-protect
-           (progn
-             (setq r3 (buffer-ring-torus-get-ring fixture-ring-3-name))
-             (funcall body-3))
-         (dynaring-destroy (buffer-ring-ring-ring r3)))))))
+  (with-fixture fixture-2
+    (let ((r3 nil))
+      (unwind-protect
+          (progn
+            (setq r3 (buffer-ring-torus-get-ring fixture-ring-3-name))
+            (funcall body-3))
+        (dynaring-destroy (buffer-ring-ring-ring r3))))))
 
 (defun fixture-3-0-A-0 (body-30a0)
   ;; 3 buffer rings: empty, 1 element, empty
   ;; [2] - 1 - 0 - [2]
-  (fixture-3
-   (lambda ()
-     (fixture-buffers-A
-      (lambda ()
-        (buffer-ring--add buf-A r2)
-        (funcall body-30a0))))))
+  (with-fixture fixture-3
+    (with-fixture fixture-buffers-A
+      (buffer-ring--add buf-A r2)
+      (funcall body-30a0))))
 
 (defun fixture-3-0-A-B (body-30ab)
   ;; 3 buffer rings: empty, 1 element, 1 element
   ;; [2] - 1 - 0 - [2]
-  (fixture-3
-   (lambda ()
-     (fixture-buffers-AB
-      (lambda ()
-        (buffer-ring--add buf-A r2)
-        (buffer-ring--add buf-B r3)
-        (funcall body-30ab))))))
+  (with-fixture fixture-3
+    (with-fixture fixture-buffers-AB
+      (buffer-ring--add buf-A r2)
+      (buffer-ring--add buf-B r3)
+      (funcall body-30ab))))
 
 (defun fixture-3-C-A-B (body-3cab)
   ;; 3 buffer rings: 1 distinct buffer in each
   ;; [2] - 1 - 0 - [2]
-  (fixture-3
-   (lambda ()
-     (fixture-buffers-ABC
-      (lambda ()
-        (buffer-ring--add buf-A r2)
-        (buffer-ring--add buf-B r3)
-        (buffer-ring--add buf-C r1)
-        (funcall body-3cab))))))
+  (with-fixture fixture-3
+    (with-fixture fixture-buffers-ABC
+      (buffer-ring--add buf-A r2)
+      (buffer-ring--add buf-B r3)
+      (buffer-ring--add buf-C r1)
+      (funcall body-3cab))))
 
 (defun fixture-3-0-A-BC (body-3-0-a-bc)
   ;; 3 buffer rings: empty, 1 element, 2 elements
   ;; [2] - 1 - 0 - [2]
-  (fixture-3
-   (lambda ()
-     (fixture-buffers-ABC
-      (lambda ()
-        (buffer-ring--add buf-A r2)
-        (buffer-ring--add buf-B r3)
-        (buffer-ring--add buf-C r3)
-        (funcall body-3-0-a-bc))))))
+  (with-fixture fixture-3
+    (with-fixture fixture-buffers-ABC
+      (buffer-ring--add buf-A r2)
+      (buffer-ring--add buf-B r3)
+      (buffer-ring--add buf-C r3)
+      (funcall body-3-0-a-bc))))
 
 (defun fixture-3-A-A-BC (body-3-a-a-bc)
   ;; 3 buffer rings: empty, 1 element, 2 elements
   ;; [2] - 1 - 0 - [2]
   ;; add a buffer to the empty ring
-  (fixture-3
-   (lambda ()
-     (fixture-buffers-ABC
-      (lambda ()
-        (buffer-ring--add buf-A r1)
-        (buffer-ring--add buf-A r2)
-        (buffer-ring--add buf-B r3)
-        (buffer-ring--add buf-C r3)
-        (funcall body-3-a-a-bc))))))
+  (with-fixture fixture-3
+    (with-fixture fixture-buffers-ABC
+      (buffer-ring--add buf-A r1)
+      (buffer-ring--add buf-A r2)
+      (buffer-ring--add buf-B r3)
+      (buffer-ring--add buf-C r3)
+      (funcall body-3-a-a-bc))))
 
 (defun fixture-3-0-AB-BC (body-3-0-ab-bc)
   ;; 3 buffer rings: empty, 1 element, 2 elements
   ;; [2] - 1 - 0 - [2]
   ;; add a buffer to the 1 ring
-  (fixture-3
-   (lambda ()
-     (fixture-buffers-ABC
-      (lambda ()
-        (buffer-ring--add buf-A r2)
-        (buffer-ring--add buf-B r2)
-        (buffer-ring--add buf-B r3)
-        (buffer-ring--add buf-C r3)
-        (funcall body-3-0-ab-bc))))))
+  (with-fixture fixture-3
+    (with-fixture fixture-buffers-ABC
+      (buffer-ring--add buf-A r2)
+      (buffer-ring--add buf-B r2)
+      (buffer-ring--add buf-B r3)
+      (buffer-ring--add buf-C r3)
+      (funcall body-3-0-ab-bc))))
 
 (defun fixture-3-0-A-ABC (body-3-0-a-abc)
   ;; 3 buffer rings: empty, 1 element, 2 elements
   ;; [2] - 1 - 0 - [2]
   ;; add a buffer to the 2 ring
-  (fixture-3
-   (lambda ()
-     (fixture-buffers-ABC
-      (lambda ()
-        (buffer-ring--add buf-A r2)
-        (buffer-ring--add buf-A r3)
-        (buffer-ring--add buf-B r3)
-        (buffer-ring--add buf-C r3)
-        (funcall body-3-0-a-abc))))))
+  (with-fixture fixture-3
+    (with-fixture fixture-buffers-ABC
+      (buffer-ring--add buf-A r2)
+      (buffer-ring--add buf-A r3)
+      (buffer-ring--add buf-B r3)
+      (buffer-ring--add buf-C r3)
+      (funcall body-3-0-a-abc))))
 
 (defun fixture-3-AB-BC-AC (body-3-ab-bc-ac)
-  (fixture-3
-   (lambda ()
-     (fixture-buffers-ABC
-      (lambda ()
-        (buffer-ring--add buf-A r1)
-        (buffer-ring--add buf-A r3)
-        (buffer-ring--add buf-B r1)
-        (buffer-ring--add buf-B r2)
-        (buffer-ring--add buf-C r2)
-        (buffer-ring--add buf-C r3)
-        (funcall body-3-ab-bc-ac))))))
+  (with-fixture fixture-3
+    (with-fixture fixture-buffers-ABC
+      (buffer-ring--add buf-A r1)
+      (buffer-ring--add buf-A r3)
+      (buffer-ring--add buf-B r1)
+      (buffer-ring--add buf-B r2)
+      (buffer-ring--add buf-C r2)
+      (buffer-ring--add buf-C r3)
+      (funcall body-3-ab-bc-ac))))
 
 ;;
 ;; Test utilities
