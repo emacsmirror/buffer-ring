@@ -47,6 +47,7 @@
   "Minor mode to modulate keybindings in buffer-ring mode."
   :lighter " buffer-ring"
   :global t
+  :group 'buffer-ring
   :keymap
   (let ((buffer-ring-map (make-sparse-keymap)))
     (define-key buffer-ring-map (kbd "C-c C-b l") #'buffer-ring-list-buffers)
