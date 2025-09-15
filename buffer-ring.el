@@ -32,6 +32,8 @@
 ;;; Code:
 
 (defconst buffer-ring-version "0.3.4")
+
+(require 'seq)
 (require 'dynaring)
 (require 's)
 (require 'ht)
