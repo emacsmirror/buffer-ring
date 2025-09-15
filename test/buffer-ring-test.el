@@ -36,7 +36,6 @@
 
 (require 'dynaring)
 (require 'buffer-ring)
-(require 'ht)
 
 ;;
 ;; Fixtures
@@ -88,7 +87,7 @@
   ;; no buffer rings present
   (unwind-protect
       (progn (setq buffer-ring-torus (dynaring-make))
-             (setq buffer-rings (ht))
+             (setq buffer-rings (make-hash-table))
              (funcall body-0))
     (let ((r1 (buffer-ring-torus-get-ring fixture-new-ring-name)))
       (when r1
@@ -1292,7 +1291,7 @@ it in the new ring."
     fixture-1-A
     (let ((key (buffer-ring-registry-get-key buf-A)))
       (kill-buffer buf-A)
-      (should-not (member r1 (ht-get buffer-rings key)))))
+      (should-not (member r1 (gethash key buffer-rings)))))
 
   (br-define-test test4
     ""
@@ -1319,14 +1318,14 @@ it in the new ring."
     fixture-3-0-A-ABC
     (let ((key (buffer-ring-registry-get-key buf-A)))
       (kill-buffer buf-A)
-      (should-not (member r2 (ht-get buffer-rings key)))))
+      (should-not (member r2 (gethash key buffer-rings)))))
 
   (br-define-test test8
     ""
     fixture-3-0-A-ABC
     (let ((key (buffer-ring-registry-get-key buf-A)))
       (kill-buffer buf-A)
-      (should-not (member r3 (ht-get buffer-rings key)))))
+      (should-not (member r3 (gethash key buffer-rings)))))
 
   (br-define-test test9
     ""

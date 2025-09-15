@@ -6,7 +6,7 @@
 ;; URL: https://github.com/countvajhula/buffer-ring
 ;; Created: 2009-4-16
 ;; Version: 0.3.4
-;; Package-Requires: ((emacs "25.1") (dynaring "0.3") (s "1.12.0") (ht "2.0"))
+;; Package-Requires: ((emacs "25.1") (dynaring "0.3"))
 
 ;; This file is NOT a part of Gnu Emacs.
 
@@ -35,8 +35,6 @@
 
 (require 'seq)
 (require 'dynaring)
-(require 's)
-(require 'ht)
 
 (defconst buffer-ring-default-ring-name "default")
 
@@ -134,7 +132,7 @@ An accessor for the dynamic ring component of the BUFFER-RING."
 ;;
 ;; TODO: use buffer local variables instead?
 (defvar buffer-ring-rings
-  (ht)
+  (make-hash-table)
   "Buffer to rings hash.")
 
 (defun buffer-ring-registry-get-key (buffer)
@@ -156,20 +154,20 @@ the current buffer."
 (defun buffer-ring-get-rings (&optional buffer)
   "All rings that BUFFER is part of."
   (let* ((buffer (buffer-ring--parse-buffer buffer))
-         (ring-names (ht-get buffer-ring-rings
-                             (buffer-ring-registry-get-key buffer))))
+         (ring-names (gethash (buffer-ring-registry-get-key buffer)
+                              buffer-ring-rings)))
     (seq-map #'buffer-ring-torus--find-ring ring-names)))
 
 (defun buffer-ring-register-ring (buffer bfr-ring)
   "Register that BUFFER has been added to BFR-RING."
   (let ((key (buffer-ring-registry-get-key buffer))
         (ring-name (buffer-ring-ring-name bfr-ring)))
-    (ht-set! buffer-ring-rings
-             key
+    (puthash key
              (delete-dups
               (cons ring-name
-                    (ht-get buffer-ring-rings
-                            key))))))
+                    (gethash key
+                             buffer-ring-rings)))
+             buffer-ring-rings)))
 
 (defun buffer-ring-registry-delete-ring (buffer bfr-ring)
   "Delete BFR-RING from the list of rings for BUFFER.
@@ -179,11 +177,11 @@ identifier from the buffer.  It should only be called either
 as part of doing the former or when deleting the ring entirely."
   (let ((key (buffer-ring-registry-get-key buffer))
         (ring-name (buffer-ring-ring-name bfr-ring)))
-    (ht-set! buffer-ring-rings
-             key
+    (puthash key
              (remq ring-name
-                   (ht-get buffer-ring-rings
-                           key)))))
+                   (gethash key
+                            buffer-ring-rings))
+             buffer-ring-rings)))
 
 (defun buffer-ring-registry-drop-ring (bfr-ring)
   "Drop BFR-RING from the registry of rings.
@@ -281,7 +279,7 @@ to the koala buffer."
         (buffer-ring-torus-switch-to-ring (buffer-ring-ring-name bfr-ring))
         (buffer-ring-delete buffer)))
     ;; remove the buffer from the buffer ring registry
-    (ht-remove! buffer-ring-rings (buffer-ring-registry-get-key buffer))
+    (remhash (buffer-ring-registry-get-key buffer) buffer-ring-rings)
     (remove-hook 'kill-buffer-hook #'buffer-ring-drop-buffer t)))
 
 (defun buffer-ring-list-buffers ()
@@ -561,7 +559,7 @@ left) or `dynaring-rotate-right` (to rotate right)."
   (let ((rings (dynaring-traverse-collect buffer-ring-torus
                                           #'buffer-ring-ring-name)))
     (if rings
-        (message "Buffer rings: %s" (s-join ", " rings))
+        (message "Buffer rings: %s" (string-join rings ", "))
       (message "No buffer rings."))))
 
 (defun buffer-ring-torus-delete-ring (&optional ring-name)
