@@ -6,5 +6,5 @@
 .cask
 *.elc
 dist
-emacs-ci
+.emacs-ci.clone
 coverage
