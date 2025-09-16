@@ -33,7 +33,8 @@
 
 (defconst buffer-ring-version "0.3.4")
 
-(require 'seq)
+(require 'seq)     ; for `seq-*' on older Emacs
+(require 'subr-x)  ; for `string-join' on older Emacs
 (require 'dynaring)
 
 (defconst buffer-ring-default-ring-name "default")
