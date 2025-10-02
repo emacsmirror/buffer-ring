@@ -128,17 +128,18 @@ whose members are expected to be buffers."
 An accessor for the dynamic ring component of the BUFFER-RING."
   (cdr buffer-ring))
 
-;;
-;; buffer rings registry
-;;
-;; TODO: use buffer local variables instead?
-(defvar buffer-ring-rings
-  (make-hash-table)
-  "Buffer to rings hash.")
+(defvar-local buffer-ring-rings
+  nil
+  "A ring attached to each buffer containing buffer rings that it is part of.
 
-(defun buffer-ring-registry-get-key (buffer)
-  "Key to use for BUFFER in the buffer registry."
-  (buffer-name buffer))
+The values are the *names* of rings rather than the rings themselves.
+It is initialized to nil as, if it were bound to a ring here, that
+bound ring would be the same value separately bound in every buffer.
+As it is mutable, the same ring would thus be mutated in every buffer,
+defeating the purpose of having it be buffer local.
+
+Each buffer will initialize this variable to a fresh dynaring when it
+is added to a ring.")
 
 (defun buffer-ring--parse-buffer (buffer)
   "Extract the buffer object indicated by BUFFER.
@@ -154,43 +155,35 @@ the current buffer."
 
 (defun buffer-ring-get-rings (&optional buffer)
   "All rings that BUFFER is part of."
-  (let* ((buffer (buffer-ring--parse-buffer buffer))
-         (ring-names (gethash (buffer-ring-registry-get-key buffer)
-                              buffer-ring-rings)))
-    (seq-map #'buffer-ring-torus--find-ring ring-names)))
+  (with-current-buffer (buffer-ring--parse-buffer buffer)
+    (seq-map #'buffer-ring-torus--find-ring
+             (seq-reverse (dynaring-values buffer-ring-rings)))))
 
-(defun buffer-ring-register-ring (buffer bfr-ring)
-  "Register that BUFFER has been added to BFR-RING."
-  (let ((key (buffer-ring-registry-get-key buffer))
-        (ring-name (buffer-ring-ring-name bfr-ring)))
-    (puthash key
-             (delete-dups
-              (cons ring-name
-                    (gethash key
-                             buffer-ring-rings)))
-             buffer-ring-rings)))
+(defun buffer-ring-rings-add-ring (buffer bfr-ring)
+  "Add BFR-RING to BUFFER's ring of buffer rings.
 
-(defun buffer-ring-registry-delete-ring (buffer bfr-ring)
-  "Delete BFR-RING from the list of rings for BUFFER.
+If BFR-RING is already present, it is promoted to the head of the ring."
+  (with-current-buffer buffer
+    (dynaring-break-insert buffer-ring-rings
+                           (buffer-ring-ring-name bfr-ring))))
 
-This does NOT delete the buffer from the ring, only the ring
-identifier from the buffer.  It should only be called either
-as part of doing the former or when deleting the ring entirely."
-  (let ((key (buffer-ring-registry-get-key buffer))
-        (ring-name (buffer-ring-ring-name bfr-ring)))
-    (puthash key
-             (remq ring-name
-                   (gethash key
-                            buffer-ring-rings))
-             buffer-ring-rings)))
+(defun buffer-ring-rings-delete-ring (buffer bfr-ring)
+  "Delete BFR-RING from the ring of buffer rings for BUFFER.
 
-(defun buffer-ring-registry-drop-ring (bfr-ring)
-  "Drop BFR-RING from the registry of rings.
+This does NOT delete the buffer from the buffer ring, only the ring
+identifier from the buffer.  It should only be called either as part
+of doing the former or when deleting the ring entirely."
+  (with-current-buffer buffer
+    (dynaring-delete buffer-ring-rings
+                     (buffer-ring-ring-name bfr-ring))))
+
+(defun buffer-ring-rings-drop-ring (bfr-ring)
+  "Drop BFR-RING from the buffer's ring of buffer rings.
 
 This should only be called when deleting the ring entirely."
   (let ((buffers (dynaring-values (buffer-ring-ring-ring bfr-ring))))
     (dolist (buf buffers)
-      (buffer-ring-registry-delete-ring buf bfr-ring))))
+      (buffer-ring-rings-delete-ring buf bfr-ring))))
 
 ;;
 ;; buffer ring interface
@@ -210,9 +203,12 @@ use a numeric operator."
 
 (defun buffer-ring--add (buffer bfr-ring)
   "Add BUFFER to BFR-RING."
+  (with-current-buffer buffer
+    (unless buffer-ring-rings
+      (setq buffer-ring-rings (dynaring-make))))
   (let ((ring (buffer-ring-ring-ring bfr-ring)))
     (dynaring-insert ring buffer)
-    (buffer-ring-register-ring buffer bfr-ring)
+    (buffer-ring-rings-add-ring buffer bfr-ring)
     (with-current-buffer buffer
       (add-hook 'kill-buffer-hook #'buffer-ring-drop-buffer t t))))
 
@@ -258,7 +254,7 @@ This modifies the ring, it does not kill the buffer."
         (let ((ring (buffer-ring-ring-ring (buffer-ring-current-ring))))
           (if (dynaring-delete ring buffer)
               (progn
-                (buffer-ring-registry-delete-ring buffer (buffer-ring-current-ring))
+                (buffer-ring-rings-delete-ring buffer (buffer-ring-current-ring))
                 (message "Deleted buffer %s from ring %s"
                          buffer
                          (buffer-ring-current-ring-name)))
@@ -279,8 +275,9 @@ to the koala buffer."
         ;; TODO: this may muddle torus recency
         (buffer-ring-torus-switch-to-ring (buffer-ring-ring-name bfr-ring))
         (buffer-ring-delete buffer)))
-    ;; remove the buffer from the buffer ring registry
-    (remhash (buffer-ring-registry-get-key buffer) buffer-ring-rings)
+    ;; delete the buffer's ring of buffer rings
+    (dynaring-destroy buffer-ring-rings)
+    (setq buffer-ring-rings nil)
     (remove-hook 'kill-buffer-hook #'buffer-ring-drop-buffer t)))
 
 (defun buffer-ring-list-buffers ()
@@ -389,7 +386,7 @@ We'd want to do this each time the ring becomes current, so that
 ring recency is consistent across the board."
   (let ((bfr-ring (or bfr-ring (buffer-ring-current-ring))))
     (dolist (buffer (dynaring-values (buffer-ring-ring-ring bfr-ring)))
-      (buffer-ring-register-ring buffer bfr-ring))))
+      (buffer-ring-rings-add-ring buffer bfr-ring))))
 
 (defun buffer-ring-surface-buffer (&optional buffer)
   "Ensure the buffer is at head position in all rings of which it is a member.
@@ -578,7 +575,7 @@ If no name is specified, this deletes the current ring."
          (bfr-ring (buffer-ring-torus--find-ring ring-name)))
     (message "ring name is %s" ring-name)
     (if bfr-ring
-        (progn (buffer-ring-registry-drop-ring bfr-ring)
+        (progn (buffer-ring-rings-drop-ring bfr-ring)
                (dynaring-delete buffer-ring-torus bfr-ring)
                (message "Ring %s deleted." ring-name))
       (dynaring-destroy (buffer-ring-ring-ring bfr-ring))

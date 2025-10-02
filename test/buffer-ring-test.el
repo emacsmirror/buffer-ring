@@ -224,7 +224,7 @@
       (funcall body-3-0-a-bc))))
 
 (defun fixture-3-A-A-BC (body-3-a-a-bc)
-  ;; 3 buffer rings: empty, 1 element, 2 elements
+  ;; 3 buffer rings: 1 element, 1 element, 2 elements
   ;; [2] - 1 - 0 - [2]
   ;; add a buffer to the empty ring
   (with-fixture fixture-3
@@ -236,7 +236,7 @@
       (funcall body-3-a-a-bc))))
 
 (defun fixture-3-0-AB-BC (body-3-0-ab-bc)
-  ;; 3 buffer rings: empty, 1 element, 2 elements
+  ;; 3 buffer rings: empty, 2 elements, 2 elements
   ;; [2] - 1 - 0 - [2]
   ;; add a buffer to the 1 ring
   (with-fixture fixture-3
@@ -304,6 +304,7 @@ Similar to `br-define-test`, this abstracts away the boilerplate of
 using fixtures, and also initializes advice etc. at the start of the
 test, which are used by buffer-ring at runtime, and disables these at
 the end of the test."
+  (declare (indent 1))
   `(,fixture
     (lambda ()
       (buffer-ring-initialize)
@@ -1242,7 +1243,7 @@ it in the new ring."
     fixture-3-0-A-ABC
     (buffer-ring-surface-ring r2)
     (dolist (buf (list buf-A buf-B buf-C))
-      (buffer-ring-register-ring buf r2))
+      (buffer-ring-rings-add-ring buf r2))
     (buffer-ring-surface-ring r3)
     (should (eq r3 (car (buffer-ring-get-rings buf-A))))
     (should (eq r3 (car (buffer-ring-get-rings buf-B))))
@@ -1286,13 +1287,6 @@ it in the new ring."
     (should-not (dynaring-contains-p (buffer-ring-ring-ring r1)
                                      buf-A)))
 
-  (br-define-test test3
-    ""
-    fixture-1-A
-    (let ((key (buffer-ring-registry-get-key buf-A)))
-      (kill-buffer buf-A)
-      (should-not (member r1 (gethash key buffer-rings)))))
-
   (br-define-test test4
     ""
     fixture-1-A
@@ -1312,20 +1306,6 @@ it in the new ring."
     (kill-buffer buf-A)
     (should-not (dynaring-contains-p (buffer-ring-ring-ring r3)
                                      buf-A)))
-
-  (br-define-test test7
-    ""
-    fixture-3-0-A-ABC
-    (let ((key (buffer-ring-registry-get-key buf-A)))
-      (kill-buffer buf-A)
-      (should-not (member r2 (gethash key buffer-rings)))))
-
-  (br-define-test test8
-    ""
-    fixture-3-0-A-ABC
-    (let ((key (buffer-ring-registry-get-key buf-A)))
-      (kill-buffer buf-A)
-      (should-not (member r3 (gethash key buffer-rings)))))
 
   (br-define-test test9
     ""
