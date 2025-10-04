@@ -156,6 +156,8 @@ the current buffer."
 (defun buffer-ring-get-rings (&optional buffer)
   "All rings that BUFFER is part of."
   (with-current-buffer (buffer-ring--parse-buffer buffer)
+    (unless buffer-ring-rings
+      (setq buffer-ring-rings (dynaring-make)))
     (seq-map #'buffer-ring-torus--find-ring
              (seq-reverse (dynaring-values buffer-ring-rings)))))
 
@@ -164,6 +166,8 @@ the current buffer."
 
 If BFR-RING is already present, it is promoted to the head of the ring."
   (with-current-buffer buffer
+    (unless buffer-ring-rings
+      (setq buffer-ring-rings (dynaring-make)))
     (dynaring-break-insert buffer-ring-rings
                            (buffer-ring-ring-name bfr-ring))))
 
@@ -174,6 +178,8 @@ This does NOT delete the buffer from the buffer ring, only the ring
 identifier from the buffer.  It should only be called either as part
 of doing the former or when deleting the ring entirely."
   (with-current-buffer buffer
+    (unless buffer-ring-rings
+      (setq buffer-ring-rings (dynaring-make)))
     (dynaring-delete buffer-ring-rings
                      (buffer-ring-ring-name bfr-ring))))
 
@@ -203,9 +209,6 @@ use a numeric operator."
 
 (defun buffer-ring--add (buffer bfr-ring)
   "Add BUFFER to BFR-RING."
-  (with-current-buffer buffer
-    (unless buffer-ring-rings
-      (setq buffer-ring-rings (dynaring-make))))
   (let ((ring (buffer-ring-ring-ring bfr-ring)))
     (dynaring-insert ring buffer)
     (buffer-ring-rings-add-ring buffer bfr-ring)
