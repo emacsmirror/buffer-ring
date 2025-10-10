@@ -6,5 +6,5 @@
 .cask
 *.elc
 dist
-.emacs-ci
+.elci
 coverage
